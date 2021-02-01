@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>加载拆图图纸</title>
+  <style type="text/css">
+    * {
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    .buttons {
+      font-size: 0;
+    }
+
+    .button {
+      margin: 5px 0 5px 5px;
+      width: 100px;
+      height: 30px;
+      border-radius: 3px;
+      border: none;
+      background: #11DAB7;
+      color: #FFFFFF;
+    }
+
+    .main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      height: 100%;
+    }
+
+    #domId {
+      flex: 1;
+    }
+  </style>
+</head>
+
+<body>
+  <div class='main'>
+    <div class='buttons'>
+      <button class="button" id="btnLoadSingle" onclick="loadSingle()">加载单张图纸</button>
+    </div>
+    <div id="domId"></div>
+  </div>
+  <script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js"></script>
+  <script>
+    var viewToken = '<your view token>';
+    // 声明Viewer及App
+    var viewer2D;
+    var app;
+    var viewLoaded = false;
+    var drawingFrame = null;
+    var drawingCount = null;
+    // 配置JSSDK加载项
+    window.onload = function () {
+      var loaderConfig = new BimfaceSDKLoaderConfig();
+      loaderConfig.viewToken = viewToken;
+      BimfaceSDKLoader.load(loaderConfig, successCallback, failureCallback);
+    }
+    // 加载成功回调函数
+    function successCallback(viewMetaData) {
+      var dom4Show = document.getElementById('domId');
+      // 设置WebApplicationDrawing的配置项
+      var webAppConfig = new Glodon.Bimface.Application.WebApplicationDrawingConfig();
+      webAppConfig.domElement = dom4Show;
+      // 创建WebApplicationDrawing，用以显示模型
+      app = new Glodon.Bimface.Application.WebApplicationDrawing(webAppConfig);
+      app.load(viewToken);
+      viewer2D = app.getViewer();
+      // 添加视口变化的监听事件
+      viewer2D.addEventListener(Glodon.Bimface.Viewer.ViewerDrawingEvent.Loaded, function (data) {
+        window.onresize = function () {
+          viewer2D.resize(document.documentElement.clientWidth, document.documentElement.clientHeight - 40);
+        }
+        viewLoaded = true;
+      });
+    }
+    // 加载失败回调函数
+    function failureCallback(error) {
+      console.log(error);
+    }
+
+    function loadSingle() {
+      if (!viewLoaded) {
+        return;
+      }
+      viewer2D.getDrawingFrame(function (data) {
+        drawingFrame = data.data[0].frames;
+        viewer2D.destroy();
+        viewer2D.loadFrame(viewToken, drawingFrame[1].id);
+      });
+    }
+
+  </script>
+</body>
+
+</html>

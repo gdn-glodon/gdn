@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Cluster Items</title>
+  <style type="text/css">
+    * {
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    .buttons {
+      font-size: 0;
+    }
+
+    .button {
+      margin: 5px 0 5px 5px;
+      width: 120px;
+      height: 30px;
+      border-radius: 3px;
+      border: none;
+      background: #32D3A6;
+      color: #FFFFFF;
+      outline: none;
+    }
+
+    .main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      height: 100%;
+    }
+
+    #domId {
+      flex: 1;
+    }
+  </style>
+  <script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js"></script>
+</head>
+
+<body>
+  <div class='main'>
+    <div class='buttons'>
+      <button class="button" id="btnSetException" onclick="setException()">设置标签样式</button>
+    </div>
+    <!-- 定义DOM元素，用于在该DOM元素中显示模型或图纸 -->
+    <div id="domId"></div>
+  </div>
+  <script type="text/javascript">
+    var viewToken = '<yourViewToken>';
+    // 声明Viewer及App
+    var viewer3D;
+    var app;
+    var viewAdded = false;
+    var drawableContainer;
+
+    // 配置JSSDK加载项
+    window.onload = function () {
+      var loaderConfig = new BimfaceSDKLoaderConfig();
+      loaderConfig.viewToken = viewToken;
+      BimfaceSDKLoader.load(loaderConfig, successCallback, failureCallback);
+    }
+
+    // 加载成功回调函数
+    function successCallback(viewMetaData) {
+      var dom4Show = document.getElementById('domId');
+      // 设置WebApplication3D的配置项
+      var webAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+      webAppConfig.domElement = dom4Show;
+      // 创建WebApplication3D，用以显示模型
+      app = new Glodon.Bimface.Application.WebApplication3D(webAppConfig);
+      app.addView(viewToken);
+      viewer3D = app.getViewer();
+
+      // 增加加载完成监听事件
+      viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function () {
+        viewAdded = true;
+        addTags(100);
+        createClusterItem();
+        //自适应屏幕大小
+        window.onresize = function () {
+          viewer3D.resize(document.documentElement.clientWidth, document.documentElement.clientHeight - 40);
+        }
+        // 渲染场景
+        viewer3D.render();
+      });
+    }
+
+    // 加载失败回调函数
+    function failureCallback(error) {
+      console.log(error);
+    }
+
+    // 创建标签容器
+    function DrawableContainer() {
+      var drawableConfig = new Glodon.Bimface.Plugins.Drawable.DrawableContainerConfig();
+      drawableConfig.viewer = viewer3D;
+      var drawableContainer = new Glodon.Bimface.Plugins.Drawable.DrawableContainer(drawableConfig);
+      return drawableContainer;
+    }
+
+    // 自定义二维标签
+    function addTag(container) {
+      var config = new Glodon.Bimface.Plugins.Drawable.CustomItemConfig();
+      config.offsetX = -6;
+      config.offsetY = -6;
+      config.opacity = 0.8;
+      var circle = document.createElement('div');
+      circle.style.width = '12px';
+      circle.style.height = '12px';
+      circle.style.border = 'solid';
+      circle.style.borderColor = '#FFFFFF';
+      circle.style.borderWidth = '2px';
+      circle.style.background = randomColor();
+      circle.style.borderRadius = '50%';
+      config.content = circle;
+      config.draggable = false;
+      config.viewer = viewer3D;
+      config.worldPosition = randomPosition();
+      var customItem = new Glodon.Bimface.Plugins.Drawable.CustomItem(config);
+      container.addItem(customItem);
+    }
+
+    // 放置标签
+    var randomTagId = null;
+    function addTags(num) {
+      drawableContainer = new DrawableContainer();
+      for (var i = 0; i < num; i++) {
+        addTag(drawableContainer);
+      }
+      var tagIndex_1 = Math.floor(Math.random() * num);
+      randomTagId_1 = drawableContainer.getAllItems()[tagIndex_1].id;
+      var tagIndex_2 = Math.floor(Math.random() * num);
+      randomTagId_2 = drawableContainer.getAllItems()[tagIndex_2].id;
+      var tagIndex_3 = Math.floor(Math.random() * num);
+      randomTagId_3 = drawableContainer.getAllItems()[tagIndex_3].id;
+    }
+
+    // 生成随机坐标点
+    function randomPosition() {
+      var position = null;
+      var xPos = -9300 + Math.random() * 17700;
+      var yPos = -15000 + Math.random() * 21200;
+      var zPos = 0 + Math.random() * 13000;
+      position = {
+        'x': xPos,
+        'y': yPos,
+        'z': zPos
+      }
+      return position;
+    }
+
+    // 随机指定颜色
+    function randomColor() {
+      var color = null;
+      switch (Math.floor(Math.random() * 100) % 4) {
+        case 0:
+          color = '#DB5246';
+          break;
+        case 1:
+          color = '#FAC941';
+          break;
+        case 2:
+          color = '#169D5C';
+          break;
+        case 3:
+          color = '#49B7F4';
+          break;
+      }
+      return color;
+    }
+
+    // 设置聚合标签
+    var clusterItem = null;
+    function createClusterItem() {
+      // 构造聚合标签容器配置项
+      var clusterContainerConfig = new Glodon.Bimface.Plugins.Cluster.ClusterContainerConfig();
+      clusterContainerConfig.viewer = viewer3D;
+      // 构造聚合标签容器
+      var clusterContainer = new Glodon.Bimface.Plugins.Cluster.ClusterContainer(clusterContainerConfig);
+      // 构造聚合标签配置项
+      var clusterItemConfig = new Glodon.Bimface.Plugins.Cluster.ClusterItemConfig();
+      clusterItemConfig.tags = drawableContainer.getAllItems();
+      console.log(drawableContainer.getAllItems().length);
+      clusterItemConfig.maxLevel = 8;
+      clusterItemConfig.viewer = viewer3D;
+      // 构造聚合标签对象
+      clusterItem = new Glodon.Bimface.Plugins.Cluster.ClusterItem(clusterItemConfig);
+      // 定义聚合标签的点击事件
+      clusterItem.onClick(function (data) {
+        var boundingBox = data.boundingBox;
+        viewer3D.zoomToBoundingBox(boundingBox, 5);
+      });
+      clusterContainer.addCluster(clusterItem);
+      clusterContainer.update();
+    }
+
+    // 根据标签ID设置聚合标签状态
+    var exceptionActivated = false;
+    function setException() {
+      if(!viewAdded) {
+        return;
+      }
+      if(!exceptionActivated) {
+        // 设置标签样式，提供了Danger、Waring、Information及Success四种，默认为Success
+        clusterItem.setException(randomTagId_1, Glodon.Bimface.Plugins.Cluster.ClusterStyle.Danger);
+        clusterItem.setException(randomTagId_2, Glodon.Bimface.Plugins.Cluster.ClusterStyle.Warning);
+        clusterItem.setException(randomTagId_3, Glodon.Bimface.Plugins.Cluster.ClusterStyle.Information);
+        // 更新聚合标签状态
+        clusterItem.updateClusterTags();
+        setButtonText('btnSetException', '清空标签样式');
+      } else {
+        // 重置所有标签样式为'Success'
+        clusterItem.clearException();
+        // 更新聚合标签状态
+        clusterItem.updateClusterTags();
+        setButtonText('btnSetException', '设置标签样式');
+      }
+      exceptionActivated = !exceptionActivated;
+    }
+
+    function setButtonText(btnId, text) {
+      var dom = document.getElementById(btnId);
+      if (dom != null && dom.nodeName == "BUTTON") {
+        dom.innerText = text;
+      }
+    }
+  </script>
+</body>
+
+</html>

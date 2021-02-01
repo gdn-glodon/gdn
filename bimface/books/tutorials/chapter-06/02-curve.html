@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+
+<!-- 本DEMO中将演示如何通过API创建曲线，并修改线宽、颜色和线型 -->
+
+<head>
+    <meta charset="utf-8">
+    <title>自定义曲线</title>
+    <style type="text/css">
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        .buttons {
+            font-size: 0;
+        }
+
+        .button {
+            margin: 5px 0 5px 5px;
+            width: 100px;
+            height: 30px;
+            border-radius: 3px;
+            border: none;
+            background: #11DAB7;
+            color: #FFFFFF;
+        }
+
+        .main {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        #domId {
+            flex: 1;
+        }
+
+        #btnAddPolyline {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="main">
+        <div class="buttons">
+            <button class="button" id="btnAddPoints" onclick="addPoints()">添加曲线点</button>
+            <button class="button" id="btnAddPolyline" onclick="addPolyline()">生成折线</button>
+        </div>
+        <!-- 定义DOM元素，用于在该DOM元素中显示模型或图纸 -->
+        <div id="domId"></div>
+    </div>
+    <script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js"></script>
+    <script>
+        var viewToken = "47a71646c2ba4a4abce6d08eeda1125c";
+        // 声明Viewer及App
+        var viewer3D;
+        var app;
+        var viewAdded = false;
+        var drawable;
+        // 配置JSSDK加载项
+        window.onload = function () {
+            var loaderConfig = new BimfaceSDKLoaderConfig();
+            loaderConfig.viewToken = viewToken;
+            BimfaceSDKLoader.load(loaderConfig, successCallback, failureCallback);
+        }
+        // 加载成功回调函数
+        function successCallback(viewMetaData) {
+            var dom4Show = document.getElementById("domId");
+            // 设置WebApplication3D的配置项
+            var webAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+            webAppConfig.domElement = dom4Show;
+            // 创建WebApplication3D，用以显示模型
+            app = new Glodon.Bimface.Application.WebApplication3D(webAppConfig);
+            app.addView(viewToken);
+            viewer3D = app.getViewer();
+            viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function () {
+                viewAdded = true;
+                window.onresize = function () {
+                    viewer3D.resize(document.documentElement.clientWidth, document.documentElement
+                        .clientHeight - 40);
+                }
+            });
+        }
+
+        // 加载失败回调函数
+        function failureCallback(error) {
+            console.log(error);
+        }
+
+        // ************************** 添加曲线点，并生成曲线 **************************
+        var isAddpointsActivated = false;
+
+        function addPoints() {
+            //清除外部构件和已添加的点
+            if (!isAddpointsActivated) {
+                points = [];
+                // 构造外部构件管理器
+                extObjMng = new Glodon.Bimface.Plugins.ExternalObject.ExternalObjectManager(viewer3D);
+                extObjMng.clear();
+                //添加点击监听事件
+                viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.MouseClicked, getPoints);
+                isAddpointsActivated = true;
+                setButtonText("btnAddPoints", "生成曲线");
+                document.getElementById("btnAddPolyline").style.display = "inline-block";
+            } else {
+                //生成样条曲线              
+                addCurve("spline");
+            }
+        }
+
+        // ************************** 生成折线 **************************
+        function addPolyline() {
+            // 生成折线
+            addCurve("polyline");
+        }
+
+        //获取曲线点坐标并添加曲线点标签
+        function getPoints(objectData) {
+            viewer3D.clearSelectedComponents();
+            point = objectData.worldPosition;
+            console.log(point);
+            if (point != null) {
+                points.push(objectData.worldPosition);
+                addTag();
+            } else {
+                alert("请点击模型范围内的点");
+            }
+        }
+
+        // 创建标签容器
+        function DrawableContainer() {
+            var drawableConfig = new Glodon.Bimface.Plugins.Drawable.DrawableContainerConfig();
+            drawableConfig.viewer = viewer3D;
+            var drawableContainer = new Glodon.Bimface.Plugins.Drawable.DrawableContainer(drawableConfig);
+            return drawableContainer;
+        }
+
+        // 添加曲线点标签的构造函数       
+        function addTag(drawable) {
+            var config = new Glodon.Bimface.Plugins.Drawable.CustomItemConfig();
+            config.offsetX = -3;
+            config.offsetY = -3;
+            config.opacity = 0.8;
+            var circle = document.createElement("div");
+            circle.style.width = "6px";
+            circle.style.height = "6px";
+            circle.style.border = "solid";
+            circle.style.borderColor = "#FFFFFF";
+            circle.style.borderWidth = "1px";
+            circle.style.background = "#FFFF00";
+            circle.style.borderRadius = "50%";
+            config.content = circle;
+            config.draggable = false;
+            config.viewer = viewer3D;
+            config.worldPosition = point;
+            var customItem = new Glodon.Bimface.Plugins.Drawable.CustomItem(config);
+            drawable = new DrawableContainer();
+            drawable.addItem(customItem);
+        }
+
+
+        // ************************** 场景中加载样条曲线 **************************    
+        function addCurve(curveType) {
+            if (points.length < 2) {
+                alert("请点击添加至少两个点");
+            } else {
+                //取消监听事件
+                viewer3D.removeEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.MouseClicked, getPoints);
+                // 清除标记点
+                var config = new Glodon.Bimface.Plugins.Drawable.CustomItemConfig();
+                drawable = new DrawableContainer();
+                drawable.clear();
+                var curve = createCurve(curveType);
+                // 将创建的样条曲线以外部构件的形式加载至场景中
+                extObjMng.addObject("curve", curve);
+                console.log(points);
+                viewer3D.render();
+                isAddpointsActivated = false;
+                setButtonText("btnAddPoints", "添加曲线点");
+                document.getElementById("btnAddPolyline").style.display = "none";
+            }
+        }
+
+        // ************************** 设置样条曲线的属性配置 **************************
+        function createCurve(curveType) {
+            // 根据点构造样条曲线
+            var splineCurve = new Glodon.Bimface.Plugins.Geometry.SplineCurve(points);
+            // 设置曲线宽度
+            splineCurve.setWidth(3);
+            // 设置曲线颜色
+            splineCurve.setColor(new Glodon.Web.Graphics.Color(255, 255, 0, 0.6));
+            // 设置曲线样式
+            splineCurve.setStyle({
+                "lineType": "Dashed",
+                "lineStyle": {
+                    // 虚线中单个短划线的长度
+                    "dashLength": 2000,
+                    // 虚线中短划线之间间隙的长度
+                    "gapLength": 200
+                }
+            });
+            // 样条曲线类型为spline，折线为polyline
+            splineCurve.setType(curveType);
+            return splineCurve;
+        }
+
+        // *********************** 按钮文字 ***********************
+        function setButtonText(btnId, text) {
+            var dom = document.getElementById(btnId);
+            if (dom != null && dom.nodeName == "BUTTON") {
+                dom.innerText = text;
+            }
+        }
+    </script>
+</body>
+
+</html>

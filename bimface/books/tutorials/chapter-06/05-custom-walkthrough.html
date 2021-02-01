@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html>
+
+<!-- 本DEMO中将演示如何通过自定义关键帧进行路径漫游，并在关键帧处触发强调及标签效果 -->
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>自定义关键帧</title>
+  <style media="screen">
+    * {
+      margin: 0;
+      padding: 0;
+     }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    .main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      height: 100%;
+      width: 100%;
+    }
+
+    .model {
+      flex: 1;
+    }
+
+    .buttons {
+      font-size: 0;
+    }
+
+    .button {
+      margin: 5px 0 5px 5px;
+      width: 100px;
+      height: 30px;
+      background: #11DAB7;
+      color: #FFFFFF;
+      border-radius: 3px;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+  <!-- 引用BIMFACE的JavaScript显示组件库 -->
+  <script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js" charset="utf-8">
+  </script>
+</head>
+
+<body>
+  <div class="main">
+    <div class="buttons">
+      <button type="button" class="button" onclick="playkey(20)">播放</button>
+      <button type="button" class="button" onclick="pause()">暂停</button>
+    </div>
+    <!-- 定义DOM元素，用于在该DOM元素中显示模型或图纸 -->
+    <div class="model" id="domId"></div>
+  </div>
+  <script type="text/javascript">
+    var viewToken = "47a71646c2ba4a4abce6d08eeda1125c";
+    var wt;
+    var viewer3D;
+    var color;
+    // 初始化显示组件
+    var options = new BimfaceSDKLoaderConfig();
+    options.viewToken = viewToken;
+    BimfaceSDKLoader.load(options, successCallback, failureCallback);
+
+    function successCallback(viewMetaData) {
+      if (viewMetaData.viewType == "3DView") {
+        color = new Glodon.Web.Graphics.Color("#32D3A6", 0.8);
+        // ======== 判断是否为3D模型 ========		
+        // 获取DOM元素
+        var dom4Show = document.getElementById("domId");
+        var webAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+        webAppConfig.domElement = dom4Show;
+        // 创建WebApplication
+        var app = new Glodon.Bimface.Application.WebApplication3D(webAppConfig);
+        // 添加待显示的模型
+        app.addView(viewToken);
+        // 从WebApplication获取viewer对象
+        viewer3D = app.getViewer();
+        //标签类的设置
+        var drawableConfig = new Glodon.Bimface.Plugins.Drawable.DrawableContainerConfig();
+        drawableConfig.viewer = viewer3D;
+        //容器
+        drawableContainer = new Glodon.Bimface.Plugins.Drawable.DrawableContainer(drawableConfig);
+        var config = new Glodon.Bimface.Plugins.Walkthrough.WalkthroughConfig();
+        config.viewer = viewer3D;
+        walkThrough = new Glodon.Bimface.Plugins.Walkthrough.Walkthrough(config);
+        // 监听添加view完成的事件
+        viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function() {
+          //自适应屏幕大小
+          window.onresize = function() {
+            viewer3D.resize(document.documentElement.clientWidth, document.documentElement
+              .clientHeight - 40);
+          }
+
+          // ************************** 设置关键帧 ************************** 
+          var keyFrames = [];
+          keyFrames.push({
+            // 关键帧的ID
+            id: "21124876-8436-4a7e-8f3f-50f30876baeb",
+            // 关键帧的相机位置和朝向
+            position:{
+              "x": -144.17680791691274,
+              "y": -18168.85392957215,
+              "z": 1882.2142840900228
+            },
+            target:{
+              "x": -144.17680791691274,
+              "y": 19023.859245849868,
+              "z": 1882.3509005534988
+            },
+            "coordinateSystem":"world",
+          });
+          keyFrames.push({
+            id: "86f4dd8e-8a43-4d4d-8aa5-cf5e3cdf16a1",
+            position: {
+              "x": 1267.4104792361863,
+              "y": -5779.529264580215,
+              "z": 1173.9114298813302
+            },
+            target:{
+              "x": 1267.4104792361863,
+              "y": 31413.183910841777,
+              "z": 1174.048046344806
+            },
+            "coordinateSystem":"world",
+          });
+          keyFrames.push({
+            id: "d1d3d7bb-684a-4ce6-8b02-e41657ee83d5",
+            position:{
+              "x": 1267.4039834159205,
+              "y": -1253.2827950356582,
+              "z": 1200.4248068252846
+            },
+            target:{
+              "x": 1267.4039834159205,
+              "y": 35939.42862975346,
+              "z": 1200.56142328233
+            },
+            "coordinateSystem":"world",
+          });
+          keyFrames.push({
+            id: "69e3cae8-3b20-481d-9a42-2fe176ca56ea",
+            position:{
+              "x": 4259.3437484695,
+              "y": 2489.3212199906316,
+              "z": 1075.2743054646094
+            },
+            target:{
+              "x": 19547.767841550543,
+              "y": 36394.51067349087,
+              "z": 1075.3988461792048
+            },
+            "coordinateSystem":"world",
+          });
+          keyFrames.push({
+            id: "5475b7eb-2589-483b-85f8-83d24543d6d8",
+            position:{
+              "x": 4320.986151476224,
+              "y": -2655.8907912037635,
+              "z": 1012.6272696808985
+            },
+            target:{
+              "x": 13278.076438797369,
+              "y": -38753.9345742074,
+              "z": 2211.727126331322
+            },
+            "coordinateSystem":"world",
+          });
+          // 将预设关键帧加入路径漫游对象
+          walkThrough.setKeyFrames(keyFrames);
+        });
+      }
+    }
+
+    function failureCallback(error) {
+      console.log(error);
+    };
+
+    // ************************** 播放路径漫游 **************************
+    function playkey(time) {
+      //播放到关键帧的时候触发回调事件
+      walkThrough.setKeyFrameCallback(keyFrameCallback);
+      walkThrough.setWalkthroughTime(time);
+      // 开始漫游
+      walkThrough.play();
+    }
+
+    // ************************** 设定关键帧的回调事件 **************************
+    function keyFrameCallback(idx) {
+      console.log("Current key frame index is " + idx);
+      switch (idx) {
+        case 0:
+          action_0();
+          break;
+        case 1:
+          action_1();
+          break;
+        case 2:
+          action_2();
+          break;
+        case 3:
+          action_3();
+          break;
+        case 4:
+          action_4();
+          break;
+        default:
+          break;
+      }
+    }
+    //关键帧0的回调事件
+    function action_0() {
+      console.log("Action 1");
+      // 定义标签位置
+      var position1 = new Object();
+      position1 = {
+        "x": 332.0014544436681,
+        "y": -7799.2836783793255,
+        "z": 1754.5086930043171
+      };
+      // 根据位置添加自定义标签
+      addCustomItem(position1);
+      viewer3D.enableBlinkComponents(true);
+      viewer3D.setBlinkColor(color);
+      var objectIds = ["279948"];
+      viewer3D.setBlinkComponentsById(objectIds);
+    }
+    //关键帧1的回调事件
+    function action_1() {
+      console.log("Action 2");
+      var position2 = new Object();
+      position2 = {
+        "x": 654.7829054823882,
+        "y": -3285.147132322519,
+        "z": 1066.89684741194
+      };
+      addCustomItem(position2);
+      viewer3D.enableBlinkComponents(true);
+      var objectIds = ["303087"];
+      viewer3D.setBlinkComponentsById(objectIds);
+      viewer3D.setBlinkColor(color);
+    }
+
+    //关键帧2的回调事件
+    function action_2() {
+      console.log("Action 3");
+      var position2 = new Object();
+      position2 = {
+        "x": 1054.7825717643482,
+        "y": 1797.7239710315598,
+        "z": 1206.212780941249
+      };
+      addCustomItem(position2);
+      var objectIds = ["309457"];
+      viewer3D.enableBlinkComponents(true);
+      viewer3D.setBlinkColor(color);
+      viewer3D.setBlinkComponentsById(objectIds);
+    }
+
+    //关键帧3的回调事件
+    function action_3() {
+      console.log("Action 4");
+      var position3 = new Object();
+      position3 = {
+        "x": 5559.583034638854,
+        "y": 4300.217638056124,
+        "z": 1531.4893970416274
+      };
+      addCustomItem(position3);
+      var objectIds = ["299868"];
+      viewer3D.enableBlinkComponents(true);
+      viewer3D.setBlinkColor(color);
+      viewer3D.setBlinkComponentsById(objectIds);
+    }
+    //关键帧4的回调事件
+    function action_4() {
+      console.log("Action 5");
+      var position4 = new Object();
+      position4 = {
+        "x": 4715.437156198313,
+        "y": -5536.783277726115,
+        "z": 1558.953109295309
+      };
+      addCustomItem(position4);
+      // 定义闪烁构件ID
+      var objectIds = ["293386"];
+      viewer3D.enableBlinkComponents(true);
+      // 设置闪烁颜色
+      viewer3D.setBlinkColor(color);
+      viewer3D.setBlinkComponentsById(objectIds);
+    }
+
+    // ************************** 添加自定义标签 **************************
+    function addCustomItem(position) {
+      // 构造自定义标签的配置项
+      var config = new Glodon.Bimface.Plugins.Drawable.CustomItemConfig();
+      // 自定义样式，支持Html的任意dom元素
+      var circle = document.createElement("div");
+      circle.style.width = "220px";
+      circle.style.height = "32px";
+      circle.style.borderRadius = "10%";
+      circle.style.background = "#fff";
+      var problemname = "例行巡检点";
+      circle.innerHTML = '<p>' + problemname +
+        '</p><img src="http://static.bimface.com/developer/webresource/assets/images/logo_mini.png" style="width:20px;height:20px;top:-15px;left:192px;position:relative;"/>'; 
+      config.content = circle;
+      config.viewer = viewer3D;
+      config.worldPosition = position;
+      //生成customItem实例
+      var customItem = new Glodon.Bimface.Plugins.Drawable.CustomItem(config);
+      // 添加自定义标签
+      drawableContainer.addItem(customItem);
+      //设置Tip的样式
+      customItem.setTooltipStyle({
+        border: "1px"
+      });
+    }
+
+    function pause() {
+      // 暂停漫游
+      walkThrough.pause();
+    }
+  </script>
+</body>
+
+</html>

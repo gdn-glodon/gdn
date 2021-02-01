@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>构件显示隐藏</title>
+  <style type="text/css">
+    * {
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      height: 100%;
+    }
+    .buttons {
+      font-size: 0;
+    }
+    .button {
+      margin: 5px 0 5px 5px;
+      width: 135px;
+      height: 30px;
+      border-radius: 3px;
+      border: none;
+      background: #11DAB7;
+      color: #FFFFFF;
+      outline: none;
+    }
+    .main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      height: 100%;
+    }
+    #domId {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+<div class='main'>
+  <div class='buttons'>
+    <button class="button" id="btnShowComponentsById" onclick="showComponentsById()">根据ID隐藏构件</button>
+    <button class="button" id="btnShowComponentsByObjectData" onclick="showComponentsByData()">根据条件隐藏构件</button>
+    <button class="button" id="btnShowExclusiveComponents" onclick="showExclusiveComponents()">显示构件（隐藏其他）</button>
+  </div>
+  <div id="domId"></div>
+</div>
+<script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js"></script>
+<script>
+  var viewToken = '<yourViewToken>';
+  // 声明Viewer及App
+  var viewer3D;
+  var model;
+  var app;
+  // 配置JSSDK加载项
+  window.onload = function() {
+    var loaderConfig = new BimfaceSDKLoaderConfig();
+    loaderConfig.viewToken = viewToken;
+    BimfaceSDKLoader.load(loaderConfig, successCallback, failureCallback);
+  }
+  // 加载成功回调函数
+  function successCallback(viewMetaData) {
+    var dom4Show = document.getElementById('domId');
+    // 设置WebApplication3D的配置项
+    var webAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+    webAppConfig.domElement = dom4Show;
+    // 创建WebApplication3D，用以显示模型
+    app = new Glodon.Bimface.Application.WebApplication3D(webAppConfig);  
+    app.addView(viewToken);
+    viewer3D = app.getViewer();
+    viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function () {
+      //自适应屏幕大小
+      window.onresize = function () {
+        viewer3D.resize(document.documentElement.clientWidth, document.documentElement.clientHeight - 40)
+      }
+      // 渲染3D模型
+      viewer3D.render();
+      model = viewer3D.getModel();
+      });
+  }
+  // 加载失败回调函数
+  function failureCallback(error) {
+    console.log(error);
+  }
+
+  //***********************根据Id显示/隐藏构件**********************
+  var isShowComponentsByIdActivated = true;
+  function showComponentsById(){
+    if (!isShowComponentsByIdActivated) {
+      // 对关注构件进行显示
+      model.showComponentsById(["267327"]);
+      viewer3D.render();
+      setButtonText("btnShowComponentsById", "根据ID隐藏构件");
+    } else {
+      // 根据ID隐藏构件
+      model.hideComponentsById(["267327"]);
+      viewer3D.render();
+      setButtonText("btnShowComponentsById", "根据ID显示构件");
+    }
+    isShowComponentsByIdActivated = !isShowComponentsByIdActivated;
+  }
+
+  //**********************根据条件显示/隐藏构件***********************
+  var isShowComponentsByDataActivated = true;
+  function showComponentsByData(){
+    if (!isShowComponentsByDataActivated) {
+      // 对关注构件进行显示
+      model.showComponentsByObjectData([{"categoryId": "-2001360"}]);
+      viewer3D.render();
+      setButtonText("btnShowComponentsByObjectData", "根据条件隐藏构件");
+    } else {
+      // 根据条件隐藏构件
+      model.hideComponentsByObjectData([{"categoryId": "-2001360"}]);
+      viewer3D.render();
+      setButtonText("btnShowComponentsByObjectData", "根据条件显示构件");
+    }
+    isShowComponentsByDataActivated = !isShowComponentsByDataActivated;
+  }
+
+  //********************根据条件显示构件并隐藏其余构件*********************
+  var isShowExclusiveComponentsActivated = false;
+  function showExclusiveComponents(){
+    if (!isShowExclusiveComponentsActivated) {
+      //显示指定构件并隐藏其余构件
+      model.showExclusiveComponentsByObjectData([{"categoryId": "-2001360"}]);
+      viewer3D.render();
+      setButtonText("btnShowExclusiveComponents", "显示所有构件");
+    } else {
+      // 显示所有构件
+      model.showAllComponents();
+      viewer3D.render();
+      setButtonText("btnShowExclusiveComponents", "显示构件（隐藏其他）");
+    }
+    isShowExclusiveComponentsActivated = !isShowExclusiveComponentsActivated;
+  }
+
+  // ************************** 按钮文字 **************************
+  function setButtonText(btnId, text) {
+    var dom = document.getElementById(btnId);
+    if (dom != null && dom.nodeName == "BUTTON") {
+      dom.innerText = text;
+    }
+  }
+</script>
+</body>
+</html>

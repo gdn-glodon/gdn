@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>三维标签</title>
+  <style media="screen">
+    * {
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    .main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      height: 100%;
+      width: 100%;
+    }
+
+    .model {
+      flex: 1;
+    }
+
+    .buttons {
+      font-size: 0;
+    }
+
+    .button {
+      margin: 5px 0 5px 5px;
+      width: 120px;
+      height: 30px;
+      background: #11DAB7;
+      color: #FFFFFF;
+      border-radius: 3px;
+      border: none;
+      cursor: pointer;
+      outline: none;
+    }
+  </style>
+  <!-- 引用BIMFACE的JavaScript显示组件库 -->
+  <script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js" charset="utf-8">
+  </script>
+</head>
+
+<body>
+  <div class='main'>
+    <div class='buttons'>
+      <button type="button" class="button" onclick="add3DMarker(position0)">点击构件添加标签</button>
+      <button class="button" id="btnClearItems" onclick="clearItems()">清除标签</button>
+    </div>
+    <!-- 定义DOM元素，用于在该DOM元素中显示模型或图纸 -->
+    <div class='model' id="domId"></div>
+  </div>
+
+  <script type="text/javascript">
+    var viewer3D;
+    var marker;
+    var viewToken = '<yourViewToken>';
+    var position0 = new Object();
+    position0 = {
+      "x": -9752.023568420416,
+      "y": -929.6956396779448,
+      "z": 13348.985568386792
+    };
+    // 初始化显示组件
+    var options = new BimfaceSDKLoaderConfig();
+    options.viewToken = viewToken;
+    BimfaceSDKLoader.load(options, successCallback, failureCallback);
+
+    function successCallback(viewMetaData) {
+      if (viewMetaData.viewType == "3DView") {
+        // 获取DOM元素
+        var WebAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+        WebAppConfig.domElement = document.getElementById('domId');
+        var app = new Glodon.Bimface.Application.WebApplication3D(WebAppConfig);
+        viewer3D = app.getViewer();
+        app.addView(viewMetaData.viewToken);
+        //三维标签的配置类
+        var markerConfig = new Glodon.Bimface.Plugins.Marker3D.Marker3DContainerConfig();
+        markerConfig.viewer = viewer3D;
+        marker = new Glodon.Bimface.Plugins.Marker3D.Marker3DContainer(markerConfig);
+        viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function () {
+          //自适应屏幕大小
+          window.onresize = function () {
+            viewer3D.resize(document.documentElement.clientWidth, document.documentElement.clientHeight - 40);
+          }
+        });
+      }
+    }
+
+    function failureCallback(error) {
+      console.log(error);
+    }
+
+    var isAddItemActtivated = false;
+    function add3DMarker() {
+      if (isAddItemActtivated) {
+        return;
+      } else {
+        // 添加点击监听事件
+        viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.MouseClicked, addItems);
+        isAddItemActtivated = true;
+      }
+    }
+
+    //增加三维标签的方法
+    function addItems(objectdata) {
+      position = objectdata.worldPosition;
+      var marker3dConfig = new Glodon.Bimface.Plugins.Marker3D.Marker3DConfig();
+      marker3dConfig.src = "http://static.bimface.com/resources/3DMarker/warner/warner_red.png";
+      marker3dConfig.worldPosition = position;
+      //三维标签的提示
+      marker3dConfig.tooltip = "this is 3DMarker.";
+      var marker3d = new Glodon.Bimface.Plugins.Marker3D.Marker3D(marker3dConfig);
+      marker3d.onClick(function (item) {
+        //获取点击图片的postion
+        var m = item.position;
+        //自己设置一个boundingbox的对象
+        var num = 1.1;
+        var max = m.x * num;
+        var may = m.y * num;
+        var maz = m.z * num;
+        var mix = m.x / num;
+        var miy = m.y / num;
+        var miz = m.z / num;
+        var maxp = new Object();
+        maxp = {
+          x: max,
+          y: may,
+          z: maz
+        };
+        var minp = new Object();
+        minp = {
+          x: mix,
+          y: miy,
+          z: miz
+        };
+        var boundingbox = new Object();
+        boundingbox = {
+          max: maxp,
+          min: minp
+        };
+        //缩放到该boundingbox
+        viewer3D.zoomToBoundingBox(boundingbox);
+      })
+      marker.addItem(marker3d);
+      viewer3D.render();
+    }
+
+    function clearItems() {
+      marker.clear();
+    }
+  </script>
+</body>
+
+</html>

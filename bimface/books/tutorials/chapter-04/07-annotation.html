@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>三维模型批注</title>
+  <style media="screen">
+    * {
+      margin: 0;
+      padding: 0;
+    }
+    html,
+    body {
+      height: 100%;
+    }
+    .main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      height: 100%;
+      width: 100%;
+    }
+    .model {
+      flex: 1;
+    }
+    .buttons {
+      font-size: 0;
+    }
+    .button {
+      margin: 5px 0 5px 5px;
+      width: 120px;
+      height: 30px;
+      background: #11DAB7;
+      color: #FFFFFF;
+      border-radius: 3px;
+      border: none;
+      cursor: pointer;
+      outline: none;
+    }
+  </style>
+  <!-- 引用BIMFACE的JavaScript显示组件库 -->
+  <script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js" charset="utf-8"></script>
+  <script src="https://static.bimface.com/attach/1c401c1d77434d07845547c6f6dfad97_jquery.js"></script>
+</head>
+<body>
+  <div class='main'>
+    <div class='buttons'>
+      <button type="button" class="button" onclick="createAnnotation()">添加批注</button>
+    </div>
+    <!-- 定义DOM元素，用于在该DOM元素中显示模型或图纸 -->
+    <div class='model' id="domId"></div>
+  </div>
+
+  <script type="text/javascript">
+    var viewer3D;
+    var marker;
+    var app;
+    var viewToken = '<yourViewToken>';
+    var modelViewer = {
+      toolbar: undefined,  // 工具条
+      annotationmanager: undefined,  // annotation的绘制管理器
+      annotationToolbar: undefined,
+      annotationControl: undefined,  // 重写annotation的保存、取消
+    };
+    // 初始化显示组件
+    var options = new BimfaceSDKLoaderConfig();
+    options.viewToken = viewToken;
+    BimfaceSDKLoader.load(options, successCallback, failureCallback);
+
+    function successCallback(viewMetaData) {
+      if (viewMetaData.viewType == "3DView") {
+        // 获取DOM元素
+        var dom4Show = document.getElementById('domId');
+        var WebAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+        WebAppConfig.domElement = dom4Show;
+        app = new Glodon.Bimface.Application.WebApplication3D(WebAppConfig);
+        app.addView(viewToken);
+        viewer3D = app.getViewer();
+        viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function () {
+          modelViewer.toolbar = $(dom4Show).find('.bf-toolbar-bottom');
+          //自适应屏幕大小
+          window.onresize = function () {
+            viewer3D.resize(document.documentElement.clientWidth, document.documentElement.clientHeight - 40);
+          }
+        });
+      }
+    }
+
+    function failureCallback(error) {
+      console.log(error);
+    }
+
+    var isAnnotationActtivated = false;
+    function createAnnotation() {
+      if (isAnnotationActtivated) {
+        return;
+      } else {
+        isAnnotationActtivated = true;
+        modelViewer.toolbar.hide();
+        if (!modelViewer.annotationmanager) {
+          var config = new Glodon.Bimface.Plugins.Annotation.AnnotationToolbarConfig();
+          config.viewer = viewer3D;
+          var annotationToolbar = new Glodon.Bimface.Plugins.Annotation.AnnotationToolbar(config);
+          modelViewer.annotationToolbar = annotationToolbar;
+          modelViewer.annotationmanager = annotationToolbar.getAnnotationManager();
+          // 移除默认的annotationToolbar control
+          var control = $(modelViewer.annotationToolbar.domElement.lastElementChild);
+          var html = control[0].innerHTML;
+          html = '<div class="bf-toolbar bf-toolbar-control">' +
+            '<input class="txtInput" placeholder="请输入批注描述" maxlength="30">' +
+            html + '</div>';
+          modelViewer.annotationControl = $(html);
+          modelViewer.annotationControl.insertAfter(control);
+          control.remove();
+          modelViewer.annotationControl.find('.bf-save').off('click').on('click', function () {
+            saveAnnotation();
+          });
+          modelViewer.annotationControl.find('.bf-cancel').off('click').on('click', function () {
+            canelAnnotation();
+          });
+        }
+        modelViewer.annotationToolbar.show();
+      }
+    }
+
+    // 三维模型保存批注
+    function saveAnnotation() {
+      //检查是否有批注
+      if (!modelViewer.annotationmanager.getAnnotationList().length) {
+        alert('批注不能为空');
+        return false;
+      }
+      //检查是否有说明
+      var textInput = $.trim(modelViewer.annotationControl.find('input').val());
+      if (!textInput) {
+        alert('批注描述不能为空');
+        return false;
+      }
+      // 批注导出快照
+      modelViewer.annotationmanager.createSnapshot(function (img) {
+        var image = new Image();
+        image.src = img;
+        document.body.appendChild(image);
+      });
+      endDrawing();
+    }
+    // 三维模型取消批注
+    function canelAnnotation() {
+      endDrawing();
+    }
+    function endDrawing() {
+      modelViewer.annotationControl.find('input').val('');
+      //卸载批注
+      modelViewer.annotationmanager.endDrawing && modelViewer.annotationmanager.endDrawing();
+      $(modelViewer.annotationToolbar.domElement).addClass('bf-hide');
+      modelViewer.toolbar.show();
+      isAnnotationActtivated = false;
+    }
+  </script>
+</body>
+
+</html>

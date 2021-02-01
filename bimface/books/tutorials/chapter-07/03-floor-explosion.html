@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- 本DEMO中将演示如何通过API进行模型楼层爆炸操作 -->
+
+<head>
+    <meta charset="utf-8">
+    <title>楼层爆炸DEMO</title>
+    <style type="text/css">
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        .buttons {
+            font-size: 0;
+        }
+
+        .button {
+            margin: 5px 0 5px 5px;
+            width: 100px;
+            height: 30px;
+            border-radius: 3px;
+            border: none;
+            background: #11DAB7;
+            color: #FFFFFF;
+        }
+
+        .main {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        #domId {
+            flex: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class='main'>
+        <div class='buttons'>
+            <button class="button" id="btnFloorExplosion" onclick="floorExplosion()">开启楼层爆炸</button>
+        </div>
+        <div id="domId"></div>
+    </div>
+    <script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js"></script>
+    <script>
+        var viewToken = '2acb70a6405e4030997eddc8a028de5c';
+        // 声明Viewer及App
+        var viewer3D;
+        var app;
+        var viewAdded = false;
+
+        // 配置JSSDK加载项
+        window.onload = function () {
+            var loaderConfig = new BimfaceSDKLoaderConfig();
+            loaderConfig.viewToken = viewToken;
+            BimfaceSDKLoader.load(loaderConfig, successCallback, failureCallback);
+        }
+        // 加载成功回调函数
+        function successCallback(viewMetaData) {
+            loadScript("https://static.bimface.com/resources/ExternalObject/Loader/TDSLoader.js");
+            var dom4Show = document.getElementById('domId');
+            // 设置WebApplication3D的配置项
+            var webAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+            webAppConfig.domElement = dom4Show;
+            webAppConfig.enableExplosion = true;
+            // 创建WebApplication3D，用以显示模型
+            app = new Glodon.Bimface.Application.WebApplication3D(webAppConfig);
+            app.addView(viewToken);
+            viewer3D = app.getViewer();
+
+            // 增加加载完成监听事件
+            viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function () {
+                viewAdded = true;
+                addLeadLabel();
+                createRooms();
+                addExternalObject();
+                //自适应屏幕大小
+                window.onresize = function () {
+                    viewer3D.resize(document.documentElement.clientWidth, document.documentElement.clientHeight - 40);
+                }
+                // 渲染场景
+                viewer3D.render();
+            });
+        }
+        // 加载失败回调函数
+        function failureCallback(error) {
+            console.log(error);
+        }
+
+        // ************************** 引线标签 **************************
+        var isAddCustomTagActivated = false;
+        var leadLabelContainer = null;
+
+        function createLeadLabelContainer() {
+            if (!leadLabelContainer) {
+                // 创建标签容器配置
+                var drawableContainerConfig = new Glodon.Bimface.Plugins.Drawable.DrawableContainerConfig();
+                // 设置容器配置匹配的对象
+                drawableContainerConfig.viewer = viewer3D;
+                // 设置标签受剖切功能的影响，即该容器内的标签被剖切后不显示，默认开启该功能
+                drawableContainerConfig.affectedBySection = true;
+                // 创建标签容器
+                leadLabelContainer = new Glodon.Bimface.Plugins.Drawable.DrawableContainer(drawableContainerConfig);
+            }
+        }
+
+        function addLeadLabel() {
+            // 定义标签坐标
+            var tagPosition = {
+                x: -3291.476,
+                y: 1504.330,
+                z: 11768.200
+            }
+            createLeadLabelContainer();
+            // 创建引线标签配置项
+            var config = new Glodon.Bimface.Plugins.Drawable.LeadLabelConfig();
+            config.objectId = '140056';
+            config.worldPosition = tagPosition;
+            config.text = '构件：屋顶';
+            // 创建引线标签对象
+            var leadLabel = new Glodon.Bimface.Plugins.Drawable.LeadLabel(config);
+            leadLabel.setWidth(100);
+            // 将引线标签添加至标签容器内
+            leadLabelContainer.addItem(leadLabel)
+        }
+
+        // ************************** 创建房间 **************************
+        function createRooms() {
+            viewer3D.getAreas(function (roomInfoList) {
+                var room1 = roomInfoList[0].rooms[15];
+                var boundary1 = room1.boundary;
+                viewer3D.createRoom(boundary1, 3300, room1.id);
+                viewer3D.setRoomsColorById([room1.id], new Glodon.Web.Graphics.Color("#EE799F", 0.8));
+                viewer3D.setRoomsFrameColorById([room1.id], new Glodon.Web.Graphics.Color("#90EE90", 0.8));
+                // 将房间绑定至对应模型，在多模型情况下建议进行此操作
+                viewer3D.bindRoomByModelId(room1.id, '1998290701862176');
+                var room2 = roomInfoList[1].rooms[3];
+                var boundary2 = room2.boundary;
+                viewer3D.createRoom(boundary2, 3300, room2.id);
+                viewer3D.setRoomsColorById([room2.id], new Glodon.Web.Graphics.Color("#CD6600", 0.8));
+                viewer3D.setRoomsFrameColorById([room2.id], new Glodon.Web.Graphics.Color("#A8A8A8", 0.8));
+                // 将房间绑定至对应模型，在多模型情况下建议进行此操作
+                viewer3D.bindRoomByModelId(room2.id, '1998290701862176');
+                viewer3D.showAllRooms();
+                viewer3D.render();
+            });
+        }
+
+        // ************************** 添加外部构件 **************************
+        function addExternalObject() {
+            var objUrl = "https://static-test.bimface.com/attach/1f03499aeee14e0c8eac359d7a672259_car.3DS";
+            // 构造3DS加载器
+            var loader = new THREE.TDSLoader();
+            // 通过加载器加载资源，获取3DS对象
+            loader.load(objUrl, function (object) {
+                // 将该对象添加为外部构件
+                extObjMng = new Glodon.Bimface.Plugins.ExternalObject.ExternalObjectManager(viewer3D);
+                extObjMng.addObject("vehicle", object);
+                isExternalObjectAdded = true;
+                // 将构件移至初始位置
+                extObjMng.translate(extObjMng.getObjectIdByName("vehicle"), new THREE.Vector3(14920, -35100, -150));
+                viewer3D.render();
+            });
+        }
+
+        // 加载js脚本
+        function loadScript(url, callback) {
+            var script = document.createElement("script");
+            script.type = "text/javascript";
+            script.onload = function () {
+                callback && callback();
+            }
+            script.src = url;
+            document.head.appendChild(script);
+        }
+
+        // ************************** 开启 / 关闭楼层爆炸 **************************
+        var isFloorExplosionActivated = false;
+        // 定义楼层爆炸的方向，缺省值为{x: 0, y: 0, z: 1}
+        var direction = { x: 1, y: 1, z: 1 };
+        var floorList = new Array();
+
+        function floorExplosion() {
+            if (!isFloorExplosionActivated) {
+                if (floorList.length == 0) {
+                    viewer3D.getFloors(function (data) {
+                        if (!data) {
+                            console.log('No floor data.');
+                            return;
+                        }
+                        for (var i = 0; i < data.length; i++) {
+                            floorList.push(data[i].id);
+                        }
+                        viewer3D.setFloorExplosion(3, floorList, direction);
+                        viewer3D.render();
+                    });
+                } else {
+                    viewer3D.setFloorExplosion(3, floorList, direction);
+                    viewer3D.render();
+                }
+                setButtonText("btnFloorExplosion", "关闭楼层爆炸");
+            } else {
+                viewer3D.clearFloorExplosion();
+                viewer3D.render();
+                setButtonText("btnFloorExplosion", "开启楼层爆炸");
+            }
+            isFloorExplosionActivated = !isFloorExplosionActivated;
+        }
+
+        // ************************** 按钮文字 **************************
+        function setButtonText(btnId, text) {
+            var dom = document.getElementById(btnId);
+            if (dom != null && dom.nodeName == "BUTTON") {
+                dom.innerText = text;
+            }
+        }
+    </script>
+</body>
+
+</html>

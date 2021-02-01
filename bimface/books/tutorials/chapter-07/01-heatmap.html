@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- 本DEMO中将演示如何通过API绘制热力图 -->
+
+<head>
+    <meta charset="utf-8">
+    <title>二维热力图</title>
+    <style type="text/css">
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        .buttons {
+            font-size: 0;
+        }
+
+        .button {
+            margin: 5px 0 5px 5px;
+            width: 100px;
+            height: 30px;
+            border-radius: 3px;
+            border: none;
+            background: #11DAB7;
+            color: #FFFFFF;
+        }
+
+        .main {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        #domId {
+            flex: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 定义DOM元素，用于在该DOM元素中显示模型或图纸 -->
+    <div class='main'>
+        <div class='buttons'>
+            <button class="button" id="btnCreateHeatMap" onclick="createHeatMap()">创建热力图</button>
+            <button class="button" id="btnUpdateHeatMap" onclick="updateHeatMap()">更新热力图</button>
+        </div>
+        <!-- 定义DOM元素，用于在该DOM元素中显示模型或图纸 -->
+        <div id="domId"></div>
+    </div>
+    <!-- 引用BIMFACE的JavaScript显示组件库 -->
+    <script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js"></script>
+    <script>
+        var viewToken = '41fecfe25e4a4734b64d117269bccb99';
+        // 声明Viewer及App
+        var viewer3D;
+        var app;
+        var viewAdded = false;
+        // 配置JSSDK加载项
+        window.onload = function () {
+            var loaderConfig = new BimfaceSDKLoaderConfig();
+            loaderConfig.viewToken = viewToken;
+            BimfaceSDKLoader.load(loaderConfig, successCallback, failureCallback);
+        }
+        // 加载成功回调函数
+        var worldPosition = new Array();
+        function successCallback(viewMetaData) {
+            var dom4Show = document.getElementById('domId');
+            // 设置WebApplication3D的配置项
+            var webAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+            webAppConfig.domElement = dom4Show;
+            // 创建WebApplication3D，用以显示模型
+            app = new Glodon.Bimface.Application.WebApplication3D(webAppConfig);
+            app.addView(viewToken);
+            viewer3D = app.getViewer();
+            // 监听添加view完成的事件
+            viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function () {
+                //自适应屏幕大小
+                window.onresize = function () {
+                    viewer3D.resize(document.documentElement.clientWidth, document.documentElement.clientHeight - 40);
+                }
+                viewAdded = true;
+                var cameraStatus = {
+                    "name": "persp",
+                    "position": {
+                        "x": 2941.6907508376853,
+                        "y": -19576.191999216262,
+                        "z": 10235.794785900604
+                    },
+                    "target": {
+                        "x": 19132.243440405087,
+                        "y": -4382.689631282188,
+                        "z": -6046.451009718475
+                    },
+                    "up": {
+                        "x": 0.4238615853908725,
+                        "y": 0.4124643836753861,
+                        "z": 0.8063587840590689
+                    },
+                    "fov": 45,
+                    "version": 1
+                }
+                viewer3D.setCameraStatus(cameraStatus);
+                // 渲染3D模型
+                viewer3D.render();
+            });
+        };
+
+        // 加载失败回调函数
+        function failureCallback(error) {
+            console.log(error);
+        }
+
+        // ************************** 热力图数据 **************************
+        // 热力图绘制区域
+        var heatMapBoundary = [
+            {
+                x: 7060,
+                y: -15200,
+                z: 2550
+            },
+            {
+                x: 13060,
+                y: -15200,
+                z: 2550
+            },
+            {
+                x: 13060,
+                y: -6200,
+                z: 2550
+            },
+            {
+                x: 7060,
+                y: -6200,
+                z: 2550
+            }];
+
+        // ************************** 绘制热力图 **************************
+        isHeatMapCreated = false;
+        var heatmap2D;
+        function createHeatMap() {
+            if (!viewAdded) {
+                return;
+            }
+
+            if (isHeatMapCreated) {
+                heatmap2D.dispose();
+                setButtonText('btnCreateHeatMap', '清除热力图');
+            } else {
+                // 构造二维热力图配置项
+                var heatmap2DConfig = new Glodon.Bimface.Plugins.Heatmap.Heatmap2DConfig();
+                // 配置viewer对象、热力图轮廓等参数      
+                heatmap2DConfig.viewer = viewer3D;
+                heatmap2DConfig.boundary = heatMapBoundary;
+                // 构造二维热力图对象
+                heatmap2D = new Glodon.Bimface.Plugins.Heatmap.Heatmap2D(heatmap2DConfig);
+                var heatMapData = createHeatMapData(20);
+                heatmap2D.setData(heatMapData);
+                heatmap2D.setRadius(80);
+                heatmap2D.update();
+                heatmap2D.show();
+                setButtonText('btnCreateHeatMap', '清除热力图');
+            }
+            isHeatMapCreated = !isHeatMapCreated;
+        }
+
+        // ************************** 更新热力图 **************************
+        function updateHeatMap() {
+            if (!viewAdded) {
+                return;
+            }
+            if (!isHeatMapCreated) {
+                return;
+            }
+            var heatMapData = createHeatMapData(20);
+            heatmap2D.setData(heatMapData);
+            heatmap2D.update();
+        }
+
+        // 随机构造若干个数据点
+        function createHeatMapData(num) {
+            var dataArr = new Array();
+            for (var i = 0; i < num; i++) {
+                var pos_X = 7060 + 6000 * Math.random();
+                var pos_Y = -15200 + 9000 * Math.random();
+                var value = 50 * (1 + Math.random());
+                var data = {
+                    x: pos_X,
+                    y: pos_Y,
+                    value: value
+                }
+                dataArr.push(data);
+            }
+            return dataArr;
+        }
+
+        // ************************** 按钮文字 **************************
+        function setButtonText(btnId, text) {
+            var dom = document.getElementById(btnId);
+            if (dom != null && dom.nodeName == "BUTTON") {
+                dom.innerText = text;
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+
+<!-- 本DEMO中将演示如何使用多种方法编辑房间 -->
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>编辑房间</title>
+    <style media="screen">
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        .main {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100%;
+            width: 100%;
+        }
+
+        .model {
+            flex: 1;
+        }
+
+        .buttons {
+            font-size: 0;
+        }
+
+        .button {
+            margin: 5px 0 5px 5px;
+            width: 100px;
+            height: 30px;
+            background: #11DAB7;
+            color: #FFFFFF;
+            border-radius: 3px;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+    <!-- 引用BIMFACE的JavaScript显示组件库 -->
+    <script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js" charset="utf-8">
+    </script>
+</head>
+
+<body>
+    <div class="main">
+        <div class="buttons">
+            <button class="button" id="btnHideRoom" onclick="hideRoom()">隐藏房间</button>
+            <button class="button" id="btnSetColor" onclick="setColor()">修改房间颜色</button>
+            <button class="button" id="btnChangeBoundary" onclick="changeBoundary()">修改房间边界</button>
+            <button class="button" id="btnEditRoom" onclick="editRoom()">房间编辑工具</button>
+        </div>
+        <!-- 定义DOM元素，用于在该DOM元素中显示模型或图纸 -->
+        <div class="model" id="domId"></div>
+    </div>
+    <script type="text/javascript">
+        var viewer3D;
+        var app;
+        var viewAdded = false;
+        var viewToken = "47a71646c2ba4a4abce6d08eeda1125c";
+
+        // 初始化显示组件
+        var options = new BimfaceSDKLoaderConfig();
+        options.viewToken = viewToken;
+        BimfaceSDKLoader.load(options, successCallback, failureCallback);
+
+        function successCallback(viewMetaData) {
+            if (viewMetaData.viewType == "3DView") {
+                // ======== 判断是否为3D模型 ========        
+                // 获取DOM元素
+                var dom4Show = document.getElementById("domId");
+                var webAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+                webAppConfig.domElement = dom4Show;
+                // 创建WebApplication
+                app = new Glodon.Bimface.Application.WebApplication3D(webAppConfig);
+                // 添加待显示的模型
+                app.addView(viewToken);
+                // 从WebApplication获取viewer3D对象
+                viewer3D = app.getViewer();
+                // 监听添加view完成的事件
+                viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function () {
+                    viewAdded = true;
+                    //自适应屏幕大小
+                    window.onresize = function () {
+                        viewer3D.resize(document.documentElement.clientWidth, document.documentElement
+                            .clientHeight - 40);
+                    }
+                    // 绘制房间
+                    createRoom();
+                    // 渲染3D模型
+                    viewer3D.render();
+                });
+            }
+        }
+
+        function failureCallback(error) {
+            console.log(error);
+        }
+                        
+        var boundary;
+        var roomInfo;
+        var isRoomCreated;
+        var room_1
+        function createRoom() {
+            //获取源文件中的房间信息
+            viewer3D.getAreas(function (roomInfo) {
+                //获取房间边界
+                boundary = roomInfo[2].rooms[6].boundary;
+                // 根据边界、高度、名字绘制房间
+                viewer3D.createRoom(boundary, 3300, "room_1");
+                viewer3D.render();
+                isRoomCreated = true;
+            });
+        };
+
+        // ************************** 控制房间可见性 **************************
+        var isRoomShown = true;
+        function hideRoom() {
+            if (!isRoomCreated || !viewAdded) {
+                return;
+            }
+            if(isRoomShown){
+                // 根据房间ID隐藏房间
+                viewer3D.hideRoomsById(["room_1"]);
+                viewer3D.render();
+                setButtonText("btnHideRoom", "显示房间");
+            } else {
+                // 根据房间ID显示房间
+                viewer3D.showRoomsById(["room_1"]);
+                viewer3D.render();
+                setButtonText("btnHideRoom", "隐藏房间");
+            }
+            isRoomShown = !isRoomShown;          
+        }
+
+        // ************************** 修改房间颜色 **************************
+        var isColorSet = false
+        function setColor(){
+            if(!isColorSet){
+                // 修改房间体块面颜色
+                viewer3D.setRoomsColorById(["room_1"], new Glodon.Web.Graphics.Color(255, 0, 0, 0.4));
+                // 修改房间体块边框颜色
+                viewer3D.setRoomsFrameColorById(["room_1"], new Glodon.Web.Graphics.Color(255, 0, 0, 1));
+                viewer3D.render();
+                setButtonText("btnSetColor", "恢复房间颜色");
+            } else {
+                // 修改房间体块面颜色
+                viewer3D.setRoomsColorById(["room_1"], new Glodon.Web.Graphics.Color(50, 138, 240, 0.4));
+                // 修改房间体块边框颜色
+                viewer3D.setRoomsFrameColorById(["room_1"], new Glodon.Web.Graphics.Color(50, 138, 240, 1));
+                viewer3D.render();
+                setButtonText("btnSetColor", "修改房间颜色");
+            }
+            isColorSet = !isColorSet
+        }
+
+        // ************************** 修改房间边界 **************************
+        var newBoundary;
+        var pt0, pt1, pt2, pt3;
+        var roomConfig;
+        var room;
+        var area;
+        var newBoundary;
+        function changeBoundary(){
+            //设置房间的顶点坐标
+            pt0 = [2238.783, 1557.716, 3499.999];
+            pt1 = [2238.783, -3984.284, 3499.999];
+            pt2 = [-5654.217, -3984.284, 3499.999];
+            pt3 = [-5654.217, 1557.716, 3499.999];
+            // 根据顶点创建一个边界
+            newBoundary = [pt0, pt1, pt2, pt3];
+            // 创建房间应用的配置项
+            roomConfig = new Glodon.Bimface.Plugins.SpatialRelation.RoomConfig();
+            roomConfig.viewer = viewer3D;
+            // 创建房间应用类
+            room = new Glodon.Bimface.Plugins.SpatialRelation.Room(roomConfig);
+            // 根据房间ID修改已有房间的房间边界
+            room.setBoundaryByRoomId("room_1", newBoundary);
+            viewer3D.render();
+            // 根据房间ID获取房间面积
+            area = room.getAreaByRoomId(["room_1"])[0].value;
+            setTimeout(
+                function(){
+                    window.alert("修改后房间的面积为：" + area + "m2")
+                }, 300
+            );
+        }
+
+        // ************************** 房间编辑器 **************************
+        var roomEditorToolbar = null;
+        function createRoomEditorToolbar() {
+            // 创建房间编辑器工具条的配置项
+            var roomEditorToolbarConfig = new Glodon.Bimface.Plugins.SpatialRelation.RoomEditorToolbarConfig();
+            roomEditorToolbarConfig.viewer = viewer3D;
+            roomEditorToolbarConfig.roomId = "room_1";
+            // 创建房间编辑器工具条
+            roomEditorToolbar = new Glodon.Bimface.Plugins.SpatialRelation.RoomEditorToolbar(roomEditorToolbarConfig);
+            // 注册房间编辑器工具条的监听事件
+            roomEditorToolbar.addEventListener(Glodon.Bimface.Plugins.SpatialRelation.RoomEditorToolbarEvent.Saved, onRoomEditorSaved);
+            roomEditorToolbar.addEventListener(Glodon.Bimface.Plugins.SpatialRelation.RoomEditorToolbarEvent.Cancelled, exitRoomEditor);
+        }
+
+        // 定义保存编辑、退出编辑的函数
+        var roomEditorState = null;
+        // 保存编辑并退出
+        function onRoomEditorSaved() {
+            console.log("saved");
+        }
+
+        // 退出编辑
+        function exitRoomEditor() {
+            // 显示主工具条
+            console.log("exit");
+        }
+
+        // 创建房间编辑器
+        function editRoom() {
+            // 创建房间编辑器
+            createRoomEditorToolbar();
+            // 隐藏主工具条
+            app.getToolbar("MainToolbar").hide();
+            // 显示房间编辑器工具条
+            roomEditorToolbar.show();
+        }
+
+        // 按钮文字
+        function setButtonText(btnId, text) {
+            var dom = document.getElementById(btnId);
+            if (dom != null && dom.nodeName == "BUTTON") {
+                dom.innerText = text;
+            }
+        };
+
+    </script>
+</body>
+
+</html>

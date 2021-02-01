@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- 本DEMO中将演示构件的强调效果 -->
+<!-- 您可以访问 https://bimface.com/objectlib 获取更多外部构件资源 -->
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>强调效果</title>
+  <style type="text/css">
+    * {
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    .buttons {
+      font-size: 0;
+    }
+
+    .button {
+      margin: 5px 0 5px 5px;
+      width: 100px;
+      height: 30px;
+      border-radius: 3px;
+      border: none;
+      background: #32D3A6;
+      color: #FFFFFF;
+      outline: none;
+    }
+
+    .main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      height: 100%;
+    }
+
+    #domId {
+      flex: 1;
+    }
+  </style>
+  <script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js"></script>
+</head>
+
+<body>
+  <div class='main'>
+    <div class='buttons'>
+      <button class="button" id="btnBlink" onclick="blink()">开启强调效果</button>
+    </div>
+    <!-- 定义DOM元素，用于在该DOM元素中显示模型或图纸 -->
+    <div id="domId"></div>
+  </div>
+  <script type="text/javascript">
+
+    var viewToken = '<yourViewToken>';
+    // 声明Viewer及App
+    var viewer3D;
+    var app;
+    var model;
+
+    // 配置JSSDK加载项
+    window.onload = function () {
+      var loaderConfig = new BimfaceSDKLoaderConfig();
+      loaderConfig.viewToken = viewToken;
+      BimfaceSDKLoader.load(loaderConfig, successCallback, failureCallback);
+    }
+
+    // 加载成功回调函数
+    function successCallback(viewMetaData) {
+      var dom4Show = document.getElementById('domId');
+      // 设置WebApplication3D的配置项
+      var webAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+      webAppConfig.domElement = dom4Show;
+      // 创建WebApplication3D，用以显示模型
+      app = new Glodon.Bimface.Application.WebApplication3D(webAppConfig);
+      app.addView(viewToken);
+      viewer3D = app.getViewer();
+
+      // 增加加载完成监听事件
+      viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function () {
+        //自适应屏幕大小
+        window.onresize = function () {
+          viewer3D.resize(document.documentElement.clientWidth, document.documentElement.clientHeight - 40)
+        }
+        // 渲染场景
+        viewer3D.render();
+        model = viewer3D.getModel();
+      });
+    }
+
+    // 加载失败回调函数
+    function failureCallback(error) {
+      console.log(error);
+    }
+
+    // *************** 构件强调效果 ***************
+    var isBlinkComponentsActivated = false;
+    function blink() {
+      if (!isBlinkComponentsActivated) {
+        // 构件闪烁                
+        model.addBlinkComponentsById(["323348", "389618"]);
+        model.setBlinkColor(new Glodon.Web.Graphics.Color("#32D3A6", 0.8));
+        viewer3D.enableBlinkComponents(true);
+        model.setBlinkIntervalTime(500);
+        viewer3D.render();
+        setButtonText("btnBlink", "关闭强调效果");
+      } else {
+        // 取消闪烁
+        model.clearAllBlinkComponents();
+        viewer3D.render();
+        setButtonText("btnBlink", "开启强调效果");
+      }
+      isBlinkComponentsActivated = !isBlinkComponentsActivated;
+    }
+
+    // *********************** 按钮文字 ***********************
+    function setButtonText(btnId, text) {
+      var dom = document.getElementById(btnId);
+      if (dom != null && dom.nodeName == "BUTTON") {
+        dom.innerText = text;
+      }
+    }
+  </script>
+</body>
+
+</html>

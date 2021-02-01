@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- 本DEMO中将演示如何通过API进行房间的空间关系计算 -->
+
+<head>
+    <meta charset="utf-8">
+    <title>空间关系计算</title>
+    <style type="text/css">
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        .buttons {
+            font-size: 0;
+        }
+
+        .button {
+            margin: 5px 0 5px 5px;
+            width: 100px;
+            height: 30px;
+            border-radius: 3px;
+            border: none;
+            background: #11DAB7;
+            color: #FFFFFF;
+        }
+
+        .main {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        #domId {
+            flex: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="main">
+        <div class="buttons">
+            <button class="button" id="btnCreateRoom" onclick="createRoom()">创建房间</button>
+            <button class="button" id="btnGetComponents" onclick="getComponents()">房间内部构件</button>
+            <button class="button" id="btnGetRooms" onclick="getRooms()">构件所在房间</button>
+            <button class="button" id="btnClearAllRooms" onclick="clearAllRooms()">清空所有房间</button>
+        </div>
+        <!-- 定义DOM元素，用于在该DOM元素中显示模型或图纸 -->
+        <div class="model" id="domId"></div>
+    </div>
+    <!-- 引用BIMFACE的JavaScript显示组件库 -->
+    <script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js"></script>
+    <script>
+        var viewToken = "47a71646c2ba4a4abce6d08eeda1125c";
+        // 声明Viewer及App
+        var viewer3D;
+        var app;
+        // 配置JSSDK加载项
+        window.onload = function () {
+            var loaderConfig = new BimfaceSDKLoaderConfig();
+            loaderConfig.viewToken = viewToken;
+            BimfaceSDKLoader.load(loaderConfig, successCallback, failureCallback);
+        }
+        // 加载成功回调函数
+        var worldPosition = new Array();
+        var roomFlag;
+
+        function successCallback(viewMetaData) {
+            var dom4Show = document.getElementById("domId");
+            // 设置WebApplication3D的配置项
+            var webAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+            webAppConfig.domElement = dom4Show;
+            // 创建WebApplication3D，用以显示模型
+            app = new Glodon.Bimface.Application.WebApplication3D(webAppConfig);
+            app.addView(viewToken);
+            viewer3D = app.getViewer();
+                window.onresize = function () {
+                            viewer3D.resize(document.documentElement.clientWidth, document.documentElement
+                                .clientHeight - 40);
+                        }
+        };
+
+        // 加载失败回调函数
+        function failureCallback(error) {
+            console.log(error);
+        }
+
+
+        // ************************** 创建房间 **************************
+        var isRoomCreated = false;
+        var isShowRoomActivated = false;
+        var roomIds = new Array();
+
+        function createRoom() {
+            if (isRoomCreated) {
+                return;
+            }
+            viewer3D.getAreas(function (data) {
+                var boundary_1 = data[2].rooms[3].boundary;
+                viewer3D.createRoom(boundary_1, 3200, "room1", new Glodon.Web.Graphics.Color(0, 0, 255, 0.2),
+                    new Glodon.Web.Graphics.Color(0, 0, 255, 1));
+                var boundary_2 = data[1].rooms[0].boundary;
+                viewer3D.createRoomByOffset(boundary_2, [-450, 3300], "room2", new Glodon.Web.Graphics.Color(255, 105, 180,
+                    0.2), new Glodon.Web.Graphics.Color(255, 105, 180, 1));
+                isRoomCreated = true;
+                viewer3D.render();
+            });
+            isRoomCreated = true;
+        }
+
+        function clearAllRooms() {
+            viewer3D.clearAllRooms();
+            viewer3D.render();
+            isRoomCreated = false;
+        }
+        // ************************** 房间空间关系计算 **************************
+        var isComponentsGet = false;
+        var isRoomsGet = false;
+        var roomConfig = null;
+        var room = null;
+
+        var makeOthersTranslucent = null;
+        // 按约束条件显示指定房间内构件
+        function getComponents() {
+            if (!roomConfig) {
+                // 构造空间关系计算应用的配置项
+                roomConfig = new Glodon.Bimface.Plugins.SpatialRelation.RoomConfig();
+                roomConfig.viewer = viewer3D;
+                // 构造空间关系计算应用对象
+                room = new Glodon.Bimface.Plugins.SpatialRelation.Room(roomConfig);
+                makeOthersTranslucent = Glodon.Bimface.Viewer.IsolateOption.MakeOthersTranslucent;
+            }
+
+            if (!isComponentsGet) {
+                // 计算room1所包含构件
+                room.getComponentsByRoomId("room1", "ORDINARY", "ORDINARY", function (data) {
+                    console.log(data);
+                    viewer3D.hideAllRooms();
+                    viewer3D.showRoomsById(["room1"]);
+                    // 显示room1内包含的构件，其他构件半透明
+                    viewer3D.isolateComponentsById(data, makeOthersTranslucent);
+                    viewer3D.render();
+                    setButtonText("btnGetComponents", "显示全部");
+                });
+            } else {
+                viewer3D.clearIsolation();
+                viewer3D.showAllRooms();
+                viewer3D.render();
+                setButtonText("btnGetComponents", "房间内部构件");
+            }
+            isComponentsGet = !isComponentsGet;
+        }
+        //按约束条件显示指定构件所在房间
+        function getRooms() {
+            if (!roomConfig) {
+                // 构造空间关系计算应用的配置项
+                roomConfig = new Glodon.Bimface.Plugins.SpatialRelation.RoomConfig();
+                roomConfig.viewer = viewer3D;
+                // 构造空间关系计算应用对象
+                room = new Glodon.Bimface.Plugins.SpatialRelation.Room(roomConfig);
+                makeOthersTranslucent = Glodon.Bimface.Viewer.IsolateOption.MakeOthersTranslucent;
+            }
+
+            if (!isRoomsGet) {
+                if (!isRoomCreated) {
+                    alert("please create room first!");
+                } else {
+                    // 根据构件ID及条件获取构件所在房间
+                    room.getRoomsByComponentId("327838", "ORDINARY", "ORDINARY", function (data) {
+                        console.log(data);
+                        viewer3D.hideAllRooms();
+                        viewer3D.showRoomsById(data);
+                        // 隔离显示房间内构件，其他构件半透明
+                        viewer3D.isolateComponentsById(["327838"], makeOthersTranslucent);
+                        viewer3D.render();
+                        setButtonText("btnGetRooms", "显示全部");
+                    })
+                }
+            } else {
+                viewer3D.clearIsolation();
+                viewer3D.showAllRooms();
+                viewer3D.render();
+                setButtonText("btnGetRooms", "构件所在房间");
+            }
+            isRoomsGet = !isRoomsGet;
+        };
+
+        // ************************** 按钮文字 **************************
+        function setButtonText(btnId, text) {
+            var dom = document.getElementById(btnId);
+            if (dom != null && dom.nodeName == "BUTTON") {
+                dom.innerText = text;
+            }
+        }
+    </script>
+</body>
+
+</html>

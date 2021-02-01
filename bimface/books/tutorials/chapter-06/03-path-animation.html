@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+
+<!-- 本DEMO中将演示如何通过API创建外部构件路径动画 -->
+
+<head>
+  <meta charset="utf-8">
+  <title>路径动画</title>
+  <style type="text/css">
+    * {
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    .buttons {
+      font-size: 0;
+    }
+
+    .button {
+      margin: 5px 0 5px 5px;
+      width: 90px;
+      height: 30px;
+      border-radius: 3px;
+      border: none;
+      background: #11DAB7;
+      color: #FFFFFF;
+    }
+
+    .main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      height: 100%;
+    }
+
+    #domId {
+      flex: 1;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="main">
+    <div class="buttons">
+      <button class="button" id="btnAddObject" onclick="addExternalObject()">添加外部构件</button>
+      <button class="button" id="btnPlayAnimation" onclick="playAnimation()">播放路径动画</button>
+      <button class="button" id="btnStopAnimation" onclick="stopAnimation()">停止路径动画</button>
+    </div>
+    <div id="domId"></div>
+  </div>
+  <script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js"></script>
+  <script>
+    var viewToken = "47a71646c2ba4a4abce6d08eeda1125c";
+    // 声明Viewer及App
+    var viewer3D;
+    var app;
+    var viewAdded = false;
+    // 配置JSSDK加载项
+    window.onload = function () {
+      var loaderConfig = new BimfaceSDKLoaderConfig();
+      loaderConfig.viewToken = viewToken;
+      BimfaceSDKLoader.load(loaderConfig, successCallback, failureCallback);
+    }
+    // 加载成功回调函数
+    function successCallback(viewMetaData) {
+      // loadScript("https://static.bimface.com/resources/ExternalObject/Loader/TDSLoader.js");
+      var dom4Show = document.getElementById("domId");
+      // 设置WebApplication3D的配置项
+      var webAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+      webAppConfig.domElement = dom4Show;
+      // 创建WebApplication3D，用以显示模型
+      app = new Glodon.Bimface.Application.WebApplication3D(webAppConfig);
+      app.addView(viewToken);
+      viewer3D = app.getViewer();
+      viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function () {
+        viewAdded = true;
+      });
+    }
+    // 加载失败回调函数
+    function failureCallback(error) {
+      console.log(error);
+    }
+
+    // ************************** 添加车辆构件及路径曲线 **************************
+    var isExternalObjectAdded = false;
+    function addExternalObject() {
+      if (isExternalObjectAdded || !viewAdded) {
+        return;
+      }
+      var pathCurve = createCurve();
+      extObjMng = new Glodon.Bimface.Plugins.ExternalObject.ExternalObjectManager(viewer3D);
+      // 添加曲线路径
+      extObjMng.addObject("pathCurve", pathCurve);
+      var url = "https://static.bimface.com/attach/6db9d5bcf88640f997b23be61e870ee8_%E6%B1%BD%E8%BD%A6.3DS";
+      // 根据Url添加外部构件
+      extObjMng.addObjectByUrl("vehicle", {"url": url}, function(){
+        extObjId = extObjMng.getObjectIdByName("vehicle");
+        isExternalObjectAdded = true;
+        // 将构件移至初始位置
+        extObjMng.translate(extObjId, {x: -7500, y: -15000, z: -450});
+        viewer3D.render();
+      });
+    }
+
+    // ************************** 播放路径动画 **************************
+    var isPathAnimationCreated = false;
+    var isPathAnimationActivated = false;
+    var pathAnimation = null;
+    function playAnimation() {
+      if (!isExternalObjectAdded || !viewAdded) {
+        return;
+      }
+      if (!isPathAnimationCreated) {
+        // 构造路径动画配置项
+        var pathAnimationConfig = new Glodon.Bimface.Plugins.Animation.PathAnimationConfig();
+        pathAnimationConfig.viewer = viewer3D;
+        // 设置路径动画使用的曲线路径
+        pathAnimationConfig.path = curve;
+        // 设置路径动画的时间
+        pathAnimationConfig.time = 10000;
+        // 设置路径动画不可循环
+        pathAnimationConfig.loop = false;
+        // 设置路径动画作用的外部构件（可选多个）
+        pathAnimationConfig.objectIds = [extObjMng.getObjectIdByName("vehicle")];
+        // 设置外部构件有俯仰效果
+        pathAnimationConfig.isPitchEnabled = true;
+        // 设置外部构件有偏航效果
+        pathAnimationConfig.isYawEnabled = true;
+        // 设置外部构件的初始偏航效果
+        pathAnimationConfig.originYaw = 0.5 * Math.PI;
+        // 构造路径动画
+        pathAnimation = new Glodon.Bimface.Plugins.Animation.PathAnimation(pathAnimationConfig);
+        isPathAnimationCreated = true;
+      }
+      if (!isPathAnimationActivated) {
+        pathAnimation.play();
+        setButtonText("btnPlayAnimation", "暂停路径动画");
+      } else {
+        pathAnimation.pause();
+        setButtonText("btnPlayAnimation", "开始路径动画");
+      }
+      isPathAnimationActivated = !isPathAnimationActivated;
+    }
+
+    // 停止路径动画
+    function stopAnimation() {
+      if (!isPathAnimationCreated || !viewAdded) {
+        return;
+      }
+      pathAnimation.stop();
+      setButtonText("btnPlayAnimation", "开始路径动画");
+      isPathAnimationActivated = false;
+    }
+
+    // ************************** 构造路径曲线 **************************
+    var curve;
+    // 路径曲线的构造函数
+    function createCurve() {
+      var curvePt0 = new THREE.Vector3(-7331.225, -13787.858, -448.000);
+      var curvePt1 = new THREE.Vector3(352.649, -13702.682, -448.000);
+      var curvePt2 = new THREE.Vector3(13433.239, -7527.885, -448.000);
+      var curvePt3 = new THREE.Vector3(15479.380, -4546.141, -448.000);
+      var curvePt4 = new THREE.Vector3(12291.580, 8258.883, -448.000);
+      var curvePt5 = new THREE.Vector3(-582.298, 9600.362, -448.000);
+      var curvePt6 = new THREE.Vector3(-13824.006, 5332.019, -448.000);
+      var curvePt7 = new THREE.Vector3(-13210.970, -6619.334, -448.000);
+      curve = new THREE.CatmullRomCurve3([curvePt0, curvePt1, curvePt2, curvePt3, curvePt4, curvePt5, curvePt6, curvePt7]);
+      // 若不显示路径，可仅返回样条曲线对象
+      var divPts = curve.getPoints(200);
+      var geometry = new THREE.Geometry();
+      geometry.vertices = divPts;
+      var material = new THREE.LineBasicMaterial({ color: 0x32D3A6 });
+      return new THREE.Line(geometry, material);
+    }
+
+    // 加载js脚本
+    function loadScript(url, callback) {
+      var script = document.createElement("script");
+      script.type = "text/javascript";
+      script.onload = function () {
+        callback && callback();
+      }
+      script.src = url;
+      document.head.appendChild(script);
+    }
+
+    // ************************** 按钮文字 **************************
+    function setButtonText(btnId, text) {
+      var dom = document.getElementById(btnId);
+      if (dom != null && dom.nodeName == "BUTTON") {
+        dom.innerText = text;
+      }
+    }
+  </script>
+</body>
+
+</html>

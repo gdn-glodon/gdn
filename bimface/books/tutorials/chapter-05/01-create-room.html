@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+
+<!-- 本DEMO中将演示如何使用多种方法绘制房间 -->
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>绘制房间</title>
+    <style media="screen">
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        .main {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100%;
+            width: 100%;
+        }
+
+        .model {
+            flex: 1;
+        }
+
+        .buttons {
+            font-size: 0;
+        }
+
+        .button {
+            margin: 5px 0 5px 5px;
+            width: 140px;
+            height: 30px;
+            background: #11DAB7;
+            color: #FFFFFF;
+            border-radius: 3px;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+    <!-- 引用BIMFACE的JavaScript显示组件库 -->
+    <script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js" charset="utf-8">
+    </script>
+</head>
+
+<body>
+    <div class="main">
+        <div class="buttons">
+            <button type="button" class="button" onclick="createRoomByBoundary()">自定义边界绘制房间</button>
+            <button type="button" class="button" onclick="createRoomByModelInfo()">根据模型信息绘制房间</button>
+            <button type="button" class="button" onclick="createRoomByOffset()">根据偏移量绘制房间</button>
+            <button type="button" class="button" onclick="createRoomByAxis()">根据轴网绘制房间</button>
+        </div>
+        <!-- 定义DOM元素，用于在该DOM元素中显示模型或图纸 -->
+        <div class="model" id="domId"></div>
+    </div>
+    <script type="text/javascript">
+        var viewer3D;
+        var app;
+        var viewToken = "47a71646c2ba4a4abce6d08eeda1125c";
+        // 初始化显示组件
+        var options = new BimfaceSDKLoaderConfig();
+        options.viewToken = viewToken;
+        BimfaceSDKLoader.load(options, successCallback, failureCallback);
+
+        function successCallback(viewMetaData) {
+            if (viewMetaData.viewType == "3DView") {
+                // ======== 判断是否为3D模型 ========        
+                // 获取DOM元素
+                var dom4Show = document.getElementById("domId");
+                var webAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+                webAppConfig.domElement = dom4Show;
+                // 创建WebApplication
+                app = new Glodon.Bimface.Application.WebApplication3D(webAppConfig);
+                // 添加待显示的模型
+                app.addView(viewToken);
+                // 从WebApplication获取viewer3D对象
+                viewer3D = app.getViewer();
+                // 监听添加view完成的事件
+                viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function () {
+                    //自适应屏幕大小
+                    window.onresize = function () {
+                        viewer3D.resize(document.documentElement.clientWidth, document.documentElement
+                            .clientHeight - 40);
+                    }
+                    // 根据楼层ID加载轴网，是根据轴网创建房间的前提条件
+                    viewer3D.showAxisGridsByFloor("", 311);
+                    // 渲染3D模型
+                    viewer3D.render();
+                });
+            }
+        }
+
+        function failureCallback(error) {
+            console.log(error);
+        }
+        
+        // ************************** 自定义边界绘制房间 **************************
+        var boundary_0;
+        var pt0, pt1, pt2, pt3;
+        function createRoomByBoundary() {
+            //设置房间的顶点坐标
+            pt0 = [108.783, 6067.716, -450.000];
+            pt1 = [108.783, 1847.716, -450.000];
+            pt2 = [-5571.217, 1847.716, -450.000];
+            pt3 = [-5571.217, 6067.716, -450.000];
+            //设置房间面和房间边框的颜色
+            var faceColor = new Glodon.Web.Graphics.Color(17, 218, 183, 0.2);
+            var frameColor = new Glodon.Web.Graphics.Color(17, 218, 183, 1);
+            // 根据顶点创建一个边界
+            boundary_0 = viewer3D.createBoundary([pt0, pt1, pt2, pt3]);
+            // 判断边界是否创建成功
+            if (boundary_0 != null) {
+                // 根据边界、高度、名字绘制房间
+                viewer3D.createRoom(boundary_0, 3950, "room_0", faceColor, frameColor);
+                viewer3D.render();
+            } else {
+                console.log("顶点坐标需要按照顺序传参！");
+            }
+        }; 
+
+        // ************************** 根据模型信息绘制房间 **************************                
+        var boundary_1;
+        var roomInfo;
+        function createRoomByModelInfo() {
+            //获取源文件中的房间信息
+            viewer3D.getAreas(function (roomInfo) {
+                //获取房间边界
+                boundary_1 = roomInfo[2].rooms[6].boundary;
+                // 根据边界、高度、名字绘制房间
+                viewer3D.createRoom(boundary_1, 3300, "room_1");
+                viewer3D.render();
+            });
+        };
+
+        // ************************** 根据偏移量绘制房间 **************************
+        var boundary_2;
+        var offset = [-450, 4000];
+        function createRoomByOffset() {
+            //获取源文件中的房间信息
+            viewer3D.getAreas(function (roomInfo) {
+                //获取房间边界
+                boundary_2 = roomInfo[1].rooms[3].boundary;
+                // 设置房间底面、顶面边界较边界标高的偏移量
+                offset = [-100, 4000];
+                // 根据边界、偏移量、名字绘制房间
+                viewer3D.createRoomByOffset(boundary_2, offset, "room_2");
+                viewer3D.render();
+            });
+        };
+
+        // ************************** 根据轴网及标高绘制房间 **************************
+        
+        var gridIds;
+        var elevations;
+        function createRoomByAxis() {
+            // 设置房间地面所在的轴号位置
+            gridIds = ["B", "D", "5", "4"];
+            // 设置房间的底标高与顶标高
+            elevations = [-450, 3500];
+            viewer3D.createRoomByAxisGrids("", gridIds, elevations, "room_3");
+    }
+
+    </script>
+</body>
+
+</html>

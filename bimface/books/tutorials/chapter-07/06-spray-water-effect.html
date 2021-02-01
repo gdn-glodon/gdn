@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>喷水效果</title>
+    <style media="screen">
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        .main {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100%;
+            width: 100%;
+        }
+
+        .model {
+            flex: 1;
+        }
+
+        .buttons {
+            font-size: 0;
+        }
+
+        .button {
+            margin: 5px 0 5px 5px;
+            width: 100px;
+            height: 30px;
+            background: #11DAB7;
+            color: #FFFFFF;
+            border-radius: 3px;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+    <!-- 引用BIMFACE的JavaScript显示组件库 -->
+    <script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js" charset="utf-8">
+    </script>
+</head>
+
+<body>
+    <div class='main'>
+        <div class='buttons'>
+            <button type="button" class="button" id="btnAddSprayWater" onclick="addSprayWaterEffect()">添加喷水效果</button>
+            <button type="button" class="button" id="btnStop" onclick="stop()">停止喷水</button>
+        </div>
+        <!-- 定义DOM元素，用于在该DOM元素中显示模型或图纸 -->
+        <div class='model' id="domId"></div>
+    </div>
+    <script type="text/javascript">
+        var viewer3D;
+        var app;
+        var viewToken = '33c223bb8bb14548ba56d0f697b995e9';
+        // 初始化显示组件
+        var options = new BimfaceSDKLoaderConfig();
+        options.viewToken = viewToken;
+        BimfaceSDKLoader.load(options, successCallback, failureCallback);
+
+        function successCallback(viewMetaData) {
+            if (viewMetaData.viewType == "3DView") {
+                // ======== 判断是否为3D模型 ========        
+                // 获取DOM元素
+                var dom4Show = document.getElementById('domId');
+                var webAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+                webAppConfig.domElement = dom4Show;
+                // 创建WebApplication
+                app = new Glodon.Bimface.Application.WebApplication3D(webAppConfig);
+                // 添加待显示的模型
+                app.addView(viewToken);
+                // 从WebApplication获取viewer3D对象
+                viewer3D = app.getViewer();
+                // 监听添加view完成的事件
+                viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function () {
+                    // 关闭模型动画
+                    viewer3D.setCameraAnimation(false);
+                    //自定义模型视角
+                    viewer3D.setCameraStatus({ "name": "persp", "position": { "x": 14229.640815073706, "y": -5908.419286551582, "z": 1034.9614012920017 }, "target": { "x": -19192.356097814052, "y": -5814.722153899217, "z": -28904.828445534386 }, "up": { "x": -0.6672349974600219, "y": 0.0018656331501452814, "z": 0.7448449352566436 }, "fov": 45, "zoom": 1, "version": 1, "coordinateSystem": "world" });
+                    // 设置深色背景色
+                    viewer3D.setBackgroundColor(new Glodon.Web.Graphics.Color(0, 22, 42, 1));
+                    // 构件着色
+                    viewer3D.overrideComponentsColorByObjectData([{ "specialty": "" }], new Glodon.Web.Graphics.Color(160, 200, 255, 0.2))
+                    // 构件线框着色
+                    viewer3D.overrideComponentsFrameColorByObjectData([{ "specialty": "" }], new Glodon.Web.Graphics.Color(200, 219, 255, 0.55));
+                    //开启平行光投影
+                    viewer3D.enableShadow(true);
+                    //自适应屏幕大小
+                    window.onresize = function () {
+                        viewer3D.resize(document.documentElement.clientWidth, document.documentElement
+                            .clientHeight - 40)
+                    }
+                    // 渲染3D模型
+                    viewer3D.render();
+                });
+            }
+        }
+
+        function failureCallback(error) {
+            console.log(error);
+        }
+
+        var sprayWaterEffect;
+        var sprayWaterEffect2;
+        var isSprayWaterEffectActivated = false;
+        var isSprayWaterEffectAdded = false;
+
+        function addSprayWaterEffect() {
+            if (!isSprayWaterEffectAdded) {
+                // 构造喷水效果的配置项
+                var sprayWaterEffectConfig = new Glodon.Bimface.Plugins.ParticleSystem.SprayWaterEffectConfig();
+                // 配置Viewer对象、颜色、初始位置、初始俯仰值、初始偏航值、初始半径、初始强度等参数
+                sprayWaterEffectConfig.viewer = viewer3D;
+                sprayWaterEffectConfig.color = new Glodon.Web.Graphics.Color(231, 254, 255, 1);
+                sprayWaterEffectConfig.originPosition = { x: -105.55258160379049, y: -8648.537708872089, z: -9118.570709077705 };
+                sprayWaterEffectConfig.originPitch = 0.15 * Math.PI;
+                sprayWaterEffectConfig.originYaw = 0.5 * Math.PI;
+                sprayWaterEffectConfig.originRadius = 50;
+                sprayWaterEffectConfig.originIntensity = 0.3;
+                // 构造喷水效果对象
+                sprayWaterEffect = new Glodon.Bimface.Plugins.ParticleSystem.SprayWaterEffect(sprayWaterEffectConfig);
+                // 设置水花扩散程度
+                sprayWaterEffect.setSpread(1.1);
+                // 设置粒子大小比例
+                sprayWaterEffect.setScale(2);
+                // 更新设置
+                sprayWaterEffect.update();
+
+                var sprayWaterEffectConfig2 = new Glodon.Bimface.Plugins.ParticleSystem.SprayWaterEffectConfig();
+                // 配置Viewer对象、颜色、初始位置、初始半径、初始强度、粒子比例等参数
+                sprayWaterEffectConfig2.viewer = viewer3D;
+                sprayWaterEffectConfig2.color = new Glodon.Web.Graphics.Color(231, 254, 255, 1);
+                sprayWaterEffectConfig2.originPosition = { x: 405.83355208377554, y: -9991.566840972831, z: -9131.327401673645 };
+                sprayWaterEffectConfig2.originRadius = 30;
+                sprayWaterEffectConfig2.originIntensity = 0.18;
+                sprayWaterEffectConfig2.spread = 1.5;
+                sprayWaterEffectConfig2.scale = 1.4
+                // 构造喷水效果对象
+                sprayWaterEffect2 = new Glodon.Bimface.Plugins.ParticleSystem.SprayWaterEffect(sprayWaterEffectConfig2);
+
+                isSprayWaterEffectAdded = true;
+                isSprayWaterEffectActivated = true;
+            }
+        }
+
+        function stop() {
+            if (!isSprayWaterEffectAdded) {
+                window.alert("请先添加喷水效果")
+            } else {
+                if (isSprayWaterEffectActivated) {
+                    // 停止喷水
+                    sprayWaterEffect.stop();
+                    sprayWaterEffect2.stop();
+                    setButtonText("btnStop", "开始喷水");
+                } else {
+                    // 开始喷水
+                    sprayWaterEffect.play();
+                    sprayWaterEffect2.play();
+                    setButtonText("btnStop", "停止喷水");
+                }
+                isSprayWaterEffectActivated = !isSprayWaterEffectActivated;
+            }
+        }
+
+        // *********************** 按钮文字 ***********************
+        function setButtonText(btnId, text) {
+            var dom = document.getElementById(btnId);
+            if (dom != null && dom.nodeName == "BUTTON") {
+                dom.innerText = text;
+            }
+        }
+    </script>
+</body>
+
+</html>

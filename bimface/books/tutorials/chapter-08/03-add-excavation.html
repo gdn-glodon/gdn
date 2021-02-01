@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>GIS地形裁切</title>
+    <style type="text/css">
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        .buttons {
+            font-size: 0;
+        }
+
+        .button {
+            margin: 5px 0 5px 5px;
+            width: 100px;
+            height: 30px;
+            border-radius: 3px;
+            border: none;
+            background: #11DAB7;
+            color: #FFFFFF;
+            outline: none;
+        }
+
+        .main {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        #domId {
+            flex: 1;
+        }
+
+        #btnShowMap,
+        #btnSetOpacity,
+        #btnSetLayer {
+            display: none;
+        }
+    </style>
+    <script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js"></script>
+</head>
+
+<body>
+    <div class='main'>
+        <div class='buttons'>
+            <button class="button" id="btnExcavationRegion" onclick="showExcavationRegion()">隐藏裁切区域</button>
+        </div>
+        <!-- 定义DOM元素，用于在该DOM元素中显示模型或图纸 -->
+        <div id="domId"></div>
+    </div>
+    <script type="text/javascript">
+
+        var viewToken = 'fe5d3335b9a14ceba472b5376c8eb5c6';
+        // 声明Viewer及App
+        var viewer3D;
+        var app;
+        var viewAdded = false;
+
+        // 配置JSSDK加载项
+        window.onload = function () {
+            var loaderConfig = new BimfaceSDKLoaderConfig();
+            loaderConfig.viewToken = viewToken;
+            BimfaceSDKLoader.load(loaderConfig, successCallback, failureCallback);
+        }
+
+        // 加载成功回调函数
+        function successCallback(viewMetaData) {
+            var dom4Show = document.getElementById('domId');
+            // 设置WebApplication3D的配置项
+            var webAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+            webAppConfig.domElement = dom4Show;
+            webAppConfig.enableLogarithmicDepthBuffer = true;
+            // 创建WebApplication3D，用以显示模型
+            app = new Glodon.Bimface.Application.WebApplication3D(webAppConfig);
+            app.addView(viewToken);
+            viewer3D = app.getViewer();
+
+            // 增加加载完成监听事件
+            viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function () {
+                viewAdded = true;
+                //自适应屏幕大小
+                window.onresize = function () {
+                    viewer3D.resize(document.documentElement.clientWidth, document.documentElement.clientHeight - 40);
+                }
+
+                var camera = {
+                    "name": "persp",
+                    "position": {
+                        "x": -11354350.96835173,
+                        "y": 13881979.024400208,
+                        "z": 67179.25684516756
+                    },
+                    "target": {
+                        "x": -10514568.072376572,
+                        "y": 14563456.018563984,
+                        "z": -471425.60657711886
+                    },
+                    "up": {
+                        "x": 0.34615817544786204,
+                        "y": 0.28090044221535554,
+                        "z": 0.8951365589304376
+                    },
+                    "fov": 45,
+                    "zoom": 1,
+                    "version": 1,
+                    "coordinateSystem": "world"
+                }
+                // 切换指定视角
+                viewer3D.setCameraStatus(camera);
+                // 加载地图
+                loadMap();
+                // 渲染场景
+                viewer3D.render();
+            });
+        }
+
+        // 加载失败回调函数
+        function failureCallback(error) {
+            console.log(error);
+        }
+
+        var map;
+        function loadMap() {
+            // 构造地图配置项
+            var mapConfig = new Glodon.Bimface.Plugins.TileMap.MapConfig();
+            mapConfig.viewer = viewer3D;
+            // 设置模型载入的基点
+            mapConfig.basePoint = {
+                "x": -11308428.209581368,
+                "y": 13950473.475138482
+            }
+            // 设置模型载入基点所对应的经纬度（WGS84）
+            mapConfig.modelPosition = [121.30211, 31.30447];
+            // 设置模型的旋转弧度值
+            mapConfig.modelRotationZ = 25.15 * Math.PI / 180;
+            // 设置模型零零标高对应的高程值，单位为米
+            mapConfig.modelAltitude = -3.8;
+            // 设置不开启DEM
+            mapConfig.enableElevationModel = false;
+            // 设置地图类型为谷歌不带标签的卫星影像
+            mapConfig.mapLayer = 'Google_Satellite';
+            // 设置地图透明度
+            mapConfig.opacity = 0.8;
+            // 构造地图对象
+            map = new Glodon.Bimface.Plugins.TileMap.Map(mapConfig);
+            // 对地图部分区域进行裁切处理
+            excavationMap();
+        }
+
+        function excavationMap() {
+            // 构造裁切区域的边界点
+            var regionPts_1 = [
+                {
+                    x: -11308489,
+                    y: 13967425,
+                    z: 0
+                },
+                {
+                    x: -11158540,
+                    y: 13967425,
+                    z: 0
+                },
+                {
+                    x: -11158540,
+                    y: 13950922,
+                    z: 0
+                },
+                {
+                    x: -11308489,
+                    y: 13950922,
+                    z: 0
+                }
+            ];
+            // 构造裁切区域的边界点
+            var regionPts_2 = [
+                {
+                    x: -10468522,
+                    y: 13967425,
+                    z: 0
+                },
+                {
+                    x: -10596351,
+                    y: 13967425,
+                    z: 0
+                },
+                {
+                    x: -10612492,
+                    y: 13966705,
+                    z: 0
+                },
+                {
+                    x: -10628492,
+                    y: 13965585,
+                    z: 0
+                },
+                {
+                    x: -10644492,
+                    y: 13964175,
+                    z: 0
+                },
+                {
+                    x: -10659510,
+                    y: 13962855,
+                    z: 0
+                },
+                {
+                    x: -10659510,
+                    y: 13955490,
+                    z: 0
+                },
+                {
+                    x: -10644492,
+                    y: 13954170,
+                    z: 0
+                },
+                {
+                    x: -10628492,
+                    y: 13952760,
+                    z: 0
+                },
+                {
+                    x: -10612492,
+                    y: 13951640,
+                    z: 0
+                },
+                {
+                    x: -10596351,
+                    y: 13950920,
+                    z: 0
+                },
+                {
+                    x: -10468522,
+                    y: 13950920,
+                    z: 0
+                }
+            ];
+            if (map) {
+                // 根据边界点创建裁切区域
+                map.addExcavationRegion('excavationRegion_1', regionPts_1);
+                map.addExcavationRegion('excavationRegion_2', regionPts_2);
+                // 根据ID列表显示裁切区域
+                map.showExcavationRegionsById(['excavationRegion_1', 'excavationRegion_2']);
+            }
+        }
+
+        isExcavationRegionShowed = true;
+        function showExcavationRegion() {
+            if (!viewAdded) {
+                return;
+            }
+            if (!isExcavationRegionShowed) {
+                // 根据ID列表显示裁切区域
+                map.showExcavationRegionsById(['excavationRegion_1', 'excavationRegion_2']);
+                setButtonText('btnExcavationRegion', '隐藏裁切区域');
+            } else {
+                // 根据ID列表隐藏裁切区域
+                map.hideExcavationRegionsById(['excavationRegion_1', 'excavationRegion_2']);
+                setButtonText('btnExcavationRegion', '显示裁切区域');
+            }
+            isExcavationRegionShowed = !isExcavationRegionShowed;
+        }
+
+        function setButtonText(btnId, text) {
+            var dom = document.getElementById(btnId);
+            if (dom != null && dom.nodeName == "BUTTON") {
+                dom.innerText = text;
+            }
+        }
+    </script>
+</body>
+
+</html>

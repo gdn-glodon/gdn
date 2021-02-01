@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- 本DEMO中将演示如何通过API显示模型爆炸效果 -->
+
+<head>
+    <meta charset="utf-8">
+    <title>模型爆炸DEMO</title>
+    <style type="text/css">
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        .buttons {
+            font-size: 0;
+        }
+
+        .button {
+            margin: 5px 0 5px 5px;
+            width: 100px;
+            height: 30px;
+            border-radius: 3px;
+            border: none;
+            background: #11DAB7;
+            color: #FFFFFF;
+        }
+
+        .main {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        #domId {
+            flex: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 定义DOM元素，用于在该DOM元素中显示模型或图纸 -->
+    <div class='main'>
+        <div class='buttons'>
+            <button class="button" id="btnShowLabel" onclick="showLabel()">显示标签</button>
+            <button class="button" id="btnExplode" onclick="explosion()">模型爆炸</button>
+        </div>
+        <!-- 定义DOM元素，用于在该DOM元素中显示模型或图纸 -->
+        <div id="domId"></div>
+    </div>
+    <!-- 引用BIMFACE的JavaScript显示组件库 -->
+    <script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js"></script>
+    <script>
+        // 声明viewToken
+        var viewToken = '079a27abe0624d818963af0df4e27c02';
+        // 声明Viewer及App
+        var viewer3D;
+        var app;
+        var viewAdded = false;
+        // 配置JSSDK加载项
+        window.onload = function () {
+            var loaderConfig = new BimfaceSDKLoaderConfig();
+            loaderConfig.viewToken = viewToken;
+            BimfaceSDKLoader.load(loaderConfig, successCallback, failureCallback);
+        }
+        // 加载成功回调函数
+        function successCallback(viewMetaData) {
+            var dom4Show = document.getElementById('domId');
+            // 设置WebApplication3D的配置项
+            var webAppConfig = new Glodon.Bimface.Application.WebApplicationRfaConfig();
+            webAppConfig.domElement = dom4Show;
+            webAppConfig.EnableFamilyList = false;
+            // 设置模型爆炸配置项
+            webAppConfig.enableExplosion = true;
+            // 创建WebApplication3D，用以显示模型
+            app = new Glodon.Bimface.Application.WebApplicationRfa(webAppConfig);
+            app.addView(viewToken);
+            viewer3D = app.getViewer();
+            // 监听添加view完成的事件
+            viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function () {
+                //自适应屏幕大小
+                window.onresize = function () {
+                    viewer3D.resize(document.documentElement.clientWidth, document.documentElement.clientHeight - 40);
+                }
+                viewAdded = true;
+                // 调用viewer3D对象的Method，可以继续扩展功能
+                // 渲染3D模型
+                viewer3D.render();
+            });
+        };
+
+        // 加载失败回调函数
+        function failureCallback(error) {
+            console.log(error);
+        }
+
+        // ************************** 显示标签 **************************
+        var isLabelShowed = false;
+        var drawableContainer
+        var label_1, label_2, label_3, label_4, label_5
+        var position_1 = {
+            "x": -487.32971940629534,
+            "y": 446.0982235762336,
+            "z": 766.5629504818967
+        };
+        var position_2 = {
+            "x": -358.77855718774214,
+            "y": 3674.9404069304824,
+            "z": 2979.7704839250296
+        };
+        var position_3 = {
+            "x": -285.01114450565376,
+            "y": 861.6578875517719,
+            "z": 1976.5807794781304
+        };
+        var position_4 = {
+            "x": -369.2201768493446,
+            "y": 1578.07786239155,
+            "z": 3260.1055462086338
+        };
+        var position_5 = {
+            "x": -277.3930371653595,
+            "y": 2866.6883272197497,
+            "z": 3410.485222659697
+        };
+
+        function showLabel() {
+            if (!viewAdded) {
+                return;
+            }
+            // 构造标签容器及引线标签
+            if (!drawableContainer) {
+                // 构造标签容器
+                var drawableContainerConfig = new Glodon.Bimface.Plugins.Drawable.DrawableContainerConfig();
+                drawableContainerConfig.viewer = viewer3D;
+                drawableContainer = new Glodon.Bimface.Plugins.Drawable.DrawableContainer(drawableContainerConfig)
+                // 构造标签配置项 labelConfig_1
+                var labelConfig_1 = new Glodon.Bimface.Plugins.Drawable.LeadLabelConfig();
+                labelConfig_1.text = "铲斗";
+                labelConfig_1.objectId = "2C-B5-26-BE-D1-4B-5F-E8-5B-C3-50-DC-C7-10-6B-F0";
+                labelConfig_1.worldPosition = position_1;
+                // 构造标签对象 label_1
+                label_1 = new Glodon.Bimface.Plugins.Drawable.LeadLabel(labelConfig_1);
+
+                // 构造标签配置项 labelConfig_2
+                var labelConfig_2 = new Glodon.Bimface.Plugins.Drawable.LeadLabelConfig();
+                labelConfig_2.text = "动臂";
+                labelConfig_2.objectId = "91-33-F3-B2-8D-B1-69-CC-F1-FB-C0-AE-65-0F-EA-58";
+                labelConfig_2.worldPosition = position_2;
+                // 构造标签对象 label_2
+                label_2 = new Glodon.Bimface.Plugins.Drawable.LeadLabel(labelConfig_2);
+
+                // 构造标签配置项 labelConfig_3
+                var labelConfig_3 = new Glodon.Bimface.Plugins.Drawable.LeadLabelConfig();
+                labelConfig_3.text = "铲斗油缸";
+                labelConfig_3.objectId = "0F-72-31-8D-4E-7A-E0-62-4D-D7-78-BC-3F-40-F9-E0";
+                labelConfig_3.worldPosition = position_3;
+                // 构造标签对象 label_3
+                label_3 = new Glodon.Bimface.Plugins.Drawable.LeadLabel(labelConfig_3);
+
+                // 构造标签配置项 labelConfig_4
+                var labelConfig_4 = new Glodon.Bimface.Plugins.Drawable.LeadLabelConfig();
+                labelConfig_4.text = "斗杆";
+                labelConfig_4.objectId = "1E-15-63-25-07-CD-17-CC-F3-05-A5-A4-37-A7-58-5C";
+                labelConfig_4.worldPosition = position_4;
+                // 构造标签对象 label_4
+                label_4 = new Glodon.Bimface.Plugins.Drawable.LeadLabel(labelConfig_4);
+
+                // 构造标签配置项 labelConfig_5
+                var labelConfig_5 = new Glodon.Bimface.Plugins.Drawable.LeadLabelConfig();
+                labelConfig_5.text = "斗杆油缸";
+                labelConfig_5.objectId = "9F-67-48-D7-1B-72-70-11-84-2E-D4-5F-2A-D1-BF-9D";
+                labelConfig_5.worldPosition = position_5;
+                // 构造标签对象 label_5
+                label_5 = new Glodon.Bimface.Plugins.Drawable.LeadLabel(labelConfig_5);
+
+                drawableContainer.addItems([label_1, label_2, label_3, label_4, label_5]);
+            }
+
+            if (!isLabelShowed) {
+                drawableContainer.showAllItems();
+                setButtonText('btnShowLabel', '隐藏标签');
+                isLabelShowed = true;
+            } else {
+                drawableContainer.hideAllItems();
+                setButtonText('btnShowLabel', '显示标签');
+                isLabelShowed = false;
+            }
+        }
+
+
+        // ************************** 模型爆炸 **************************
+        var isModelExploded = false;
+        function explosion() {
+            if (!viewAdded) {
+                return;
+            }
+
+            if (isModelExploded) {
+                viewer3D.setExplosionExtent(0);
+                viewer3D.setCameraStatus({ "name": "persp", "position": { "x": -5317.259863910988, "y": -1886.5636664405868, "z": 7241.526356541814 }, "target": { "x": 157.03999363977766, "y": 3587.756354790336, "z": 1767.2463784730662 }, "up": { "x": 0, "y": -0.0000036732051851720742, "z": 0.9999999999932538 }, "fov": 45, "zoom": 1, "version": 1 });
+                viewer3D.render();
+                setButtonText('btnExplode', '模型爆炸');
+            } else {
+                // 设置模型爆炸的离散系数 取值范围[0,3]
+                viewer3D.setExplosionExtent(1.0);
+                viewer3D.setCameraStatus({ "name": "persp", "position": { "x": -15456.131414174444, "y": 2376.585001651517, "z": 8093.406779730924 }, "target": { "x": -6826.707566985428, "y": 2312.779433864755, "z": 4164.939799088339 }, "up": { "x": 0.4143067293530256, "y": -0.0030674010328836576, "z": 0.9101321470334416 }, "fov": 45, "zoom": 1, "version": 1 });
+                viewer3D.render();
+                setButtonText('btnExplode', '清除爆炸');
+            }
+            isModelExploded = !isModelExploded;
+            showLabel;
+        }
+
+        // ************************** 按钮文字 **************************
+        function setButtonText(btnId, text) {
+            var dom = document.getElementById(btnId);
+            if (dom != null && dom.nodeName == "BUTTON") {
+                dom.innerText = text;
+            }
+        }
+    </script>
+</body>
+
+</html>

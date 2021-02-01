@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="renderer" content="webkit">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+<title>小地图打标签</title>
+<style media="screen">
+  * {margin: 0;padding: 0;}
+  html,body{height:100%}
+  .main {display: flex;flex-direction: column;overflow: hidden;height: 100%; width: 100%;}
+  .model {flex: 1; }
+</style>
+<!-- 引用BIMFACE的JavaScript显示组件库 -->
+<script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js" charset="utf-8"></script>
+</head>
+<body>
+<div class='main'>
+<div class='model' id="domId" ></div></div>
+
+<script type="text/javascript">
+  var viewer3D;
+  var app;
+  var viewToken ='<yourViewToken>';
+  // 初始化显示组件
+  var options = new BimfaceSDKLoaderConfig();
+  options.viewToken = viewToken;
+  BimfaceSDKLoader.load(options, successCallback, failureCallback);
+  function successCallback(viewMetaData) {        
+    if (viewMetaData.viewType == "3DView") {
+      // ======== 判断是否为3D模型 ========        
+      // 获取DOM元素
+      var dom4Show = document.getElementById('domId');
+      var webAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+      webAppConfig.domElement = dom4Show;    
+      // 创建WebApplication
+      app = new Glodon.Bimface.Application.WebApplication3D(webAppConfig);    
+      // 添加待显示的模型
+      app.addView(viewToken);
+      // 从WebApplication获取viewer3D对象
+      viewer3D = app.getViewer();    
+      // 监听添加view完成的事件
+      viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function () {
+        // 渲染3D模型
+        viewer3D.render();
+        //自适应屏幕大小
+        window.onresize=function(){
+          viewer3D.resize(document.documentElement.clientWidth,document.documentElement.clientHeight-40)
+        };
+      });
+      // 监听添加view进行中的时间，可获取添加进度
+      viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.MouseClicked, function (objectdata) {
+        //小地图配置
+        var tagconfig = new Glodon.Bimface.Plugins.Drawable.MiniTagConfig();
+        //提前打开小地图，获取小地图对象
+        tagconfig.minimap = app.getPlugin("Map")._helper;
+        tagconfig.viewer = viewer3D;
+        //获取鼠标点击的世界坐标
+        wp= objectdata.worldPosition;
+        wpx=wp.x;
+        wpy=wp.y;
+
+        tagconfig.boundingBox = objectdata.boundingBox;
+        //对应在小地图的位置
+        tagconfig.worldPosition=new THREE.Vector2(wpx,wpy);
+        tagconfig.objectId=objectdata.objectId;
+        //需要在哪几层小地图显示标签
+        tagconfig.floorList=["F1","F2","F3"];
+        //标签大小
+        tagconfig.height=20;
+        tagconfig.width=20;
+        //标签的位置
+        tagconfig.src="http://static.bimface.com/resources/3DMarker/camera/camera_bf.png";
+
+        var miniTag = new Glodon.Bimface.Plugins.Drawable.MiniTag(tagconfig);
+
+        var drawableConfig = new Glodon.Bimface.Plugins.Drawable.DrawableContainerConfig();
+        drawableConfig.viewer = viewer3D;
+        var drawableContainer = new Glodon.Bimface.Plugins.Drawable.DrawableContainer(drawableConfig);
+        drawableContainer.addItem(miniTag);//miniTag添加到drawableContainer中，即可绘制
+
+      });    
+    }   
+  }
+  function failureCallback(error) {
+    console.log(error);
+  }
+</script>
+</body>
+</html>

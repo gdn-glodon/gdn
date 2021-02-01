@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>引线标签</title>
+  <style media="screen">
+    *{box-sizing: border-box;}
+    html,body{margin: 0;padding: 0;width: 100%;height: 100%;}
+    .container{width: 100%;height: 100%;padding-right: 210px;position: relative;}.view{height: 100%;}
+    .right-bar{position: absolute; right: 0;top: 0;width: 210px;height: 100%;border-left: 1px solid #d8d8d8;vertical-align: top;}
+    .title{height: 36px;border-bottom: 1px solid #d8d8d8;padding: 0 10px;line-height: 36px;}
+    .button{padding: 7px 24px;border-radius: 3px;margin-right: 10px;}.add{color: #ffffff;background: #11dab7;}
+    .cancel{border: 1px solid #11dab7;color: #11dab7;}.edit{display: none;padding: 10px;border-bottom: 1px solid #d8d8d8;}
+    .textarea{width: 100%;height: 90px;border: 1px solid #ccc;resize: none;outline: none;}
+    .tips{padding: 10px;font-size: 14px;color: #666;}.new{padding: 10px;}
+  </style>
+  <!-- 引用BIMFACE的JavaScript显示组件库 -->
+  <script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js" charset="utf-8"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="view" id="view"></div>
+    <div class="right-bar">
+      <div class="title">引线标签</div>
+      <div class="tips" id="myTips"></div>
+      <div class="edit" id="edit">
+        <textarea id="textarea" class="textarea"></textarea>
+        <button class="button add" id="save">保存</button>
+        <button class="button cancel" id="cancel">取消</button>
+      </div>
+      <div class="new">
+        <input type="button" class="button add" value="新建引线标签" id="new">
+      </div>
+    </div>
+  </div>
+  <script type="text/javascript">
+    var viewer3D,drawable,selectedLabel;
+    var viewToken = '<yourViewToken>';
+    var BimfaceLoaderConfig = new BimfaceSDKLoaderConfig();
+    BimfaceLoaderConfig.viewToken = viewToken;
+    BimfaceSDKLoader.load(BimfaceLoaderConfig,onSDKLoadSucceeded,onSDKLoadFailed);
+
+    function onSDKLoadSucceeded(viewMetaData){
+      var view = document.getElementById('view');
+      var app = new Glodon.Bimface.Application.WebApplicationDemo(viewMetaData,view);
+      viewer3D = app._application.getViewer();
+      var drawableConfig = new Glodon.Bimface.Plugins.Drawable.DrawableContainerConfig();
+      drawableConfig.viewer = viewer3D;
+      drawableConfig.maxNum = 10;
+      drawable = new Glodon.Bimface.Plugins.Drawable.DrawableContainer(drawableConfig);
+    };
+
+    function onSDKLoadFailed(error){
+    };
+
+    var edit = document.getElementById("edit"),
+    textarea = document.getElementById("textarea"),
+    myTips = document.getElementById("myTips"),
+    newButton = document.getElementById("new"),
+    saveButton = document.getElementById("save"),
+    cancelButton = document.getElementById("cancel"),
+    data = {};
+    var clickEvent = function(componentData){
+      if(componentData && componentData.objectId){
+        myTips.style.display = "none";
+        edit.style.display = "block";
+        data.componentId = componentData.objectId;
+        data.worldPosition = componentData.worldPosition;
+      }else{
+        myTips.innerText = "请选择一个合适的位置。";
+        myTips.style.display = "block";
+      }
+    }
+    var saveFn = function(){
+      var text = textarea.value;
+      if(!text.trim()){
+        myTips.innerText = "标签内容不能为空。";
+        myTips.style.display = "block";
+        return false;
+      }
+      if(data.item){
+        data.item.setText(text);
+      }else{
+
+        //引线标签的配置类
+        var config = new Glodon.Bimface.Plugins.Drawable.LeadLabelConfig();
+        //引线折点的相对位置
+        config.offset = {x: 27, y: -47};
+        //引线标签的内容
+        config.text = text;
+        //引线标签关联的构件
+        config.objectId = data.componentId;
+        //引线标签的世界坐标
+        config.worldPosition = data.worldPosition;
+        //引线标签是否可拖拽
+        config.draggable = true;
+        //引线标签的视图
+        config.viewer = viewer3D;
+
+        var label = new Glodon.Bimface.Plugins.Drawable.LeadLabel(config);
+
+        //引线标签的双击事件
+        label.onDoubleClick(function(item){
+          newButton.style.display = "none";
+          edit.style.display = "block";
+          textarea.value = item.getText();
+          data.item = item;
+        });
+
+        //引线标签的左键点击事件
+        label.onClick(function(item){
+          console.log(label.getObjectId(item.id));
+          selectedLabel = item;
+        });
+        drawable.addItem(label);
+        viewer3D.removeEventListener(Glodon.Bimface.Application.WebApplication3DEvent.ComponentsSelectionChanged,clickEvent);
+      }
+      data = {};
+      textarea.value = "";
+      edit.style.display = "none";
+      myTips.style.display = "none";
+      newButton.style.display = "block";
+    }
+    newButton.addEventListener("click",function(){
+      viewer3D.addEventListener(Glodon.Bimface.Application.WebApplication3DEvent.ComponentsSelectionChanged,clickEvent);
+      this.style.display = "none";
+      myTips.innerText = "请在模型上选择标签位置。";
+      myTips.style.display = "block";
+    });
+
+    saveButton.addEventListener("click",saveFn);
+
+    cancelButton.addEventListener("click",function(){
+      viewer3D.removeEventListener(Glodon.Bimface.Application.WebApplication3DEvent.ComponentsSelectionChanged,clickEvent);
+      edit.style.display = "none";
+      newButton.style.display = "block";
+      textarea.value = "";
+      data = {};
+    })
+    document.addEventListener("keyup",function(e){
+      var e = e || event;
+      if(selectedLabel && (e.keyCode == 8 || e.keyCode == 46)){
+        drawable.removeItemById(selectedLabel.id);
+        selectedLabel = null;
+      }
+    })
+  </script>

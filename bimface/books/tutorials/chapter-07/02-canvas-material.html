@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>设置Canvas材质</title>
+    <style type="text/css">
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        .buttons {
+            font-size: 0;
+        }
+
+        .button {
+            margin: 5px 0 5px 5px;
+            width: 110px;
+            height: 30px;
+            border-radius: 3px;
+            border: none;
+            background: #32D3A6;
+            color: #FFFFFF;
+        }
+
+        .main {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        #domId {
+            flex: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class='main'>
+        <div class='buttons'>
+            <button class="button" id="btnRecPlane" onclick="addRecPlane()">添加canvas材质</button>
+        </div>
+        <div id="domId"></div>
+    </div>
+    <script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js"></script>
+    <script>
+        var viewToken = '2dd0fa7b0c1f4b148eb5ee069aa0407a';
+        // 声明Viewer及App
+        var viewer3D;
+        var app;
+        var viewAdded = false;
+        // 配置JSSDK加载项
+        window.onload = function () {
+            var loaderConfig = new BimfaceSDKLoaderConfig();
+            loaderConfig.viewToken = viewToken;
+            BimfaceSDKLoader.load(loaderConfig, successCallback, failureCallback);
+        }
+        // 加载成功回调函数
+        function successCallback(viewMetaData) {
+            var dom4Show = document.getElementById('domId');
+            // 设置WebApplication3D的配置项
+            var webAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+            webAppConfig.domElement = dom4Show;
+            webAppConfig.enableReplaceMaterial = true;
+            // 创建WebApplication3D，用以显示模型
+            app = new Glodon.Bimface.Application.WebApplication3D(webAppConfig);
+            app.addView(viewToken);
+            viewer3D = app.getViewer();
+            viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function () {
+                viewAdded = true;
+                window.onresize = function () {
+                    viewer3D.resize(document.documentElement.clientWidth, document.documentElement.clientHeight - 40);
+                }
+            });
+        }
+        // 加载失败回调函数
+        function failureCallback(error) {
+            console.log(error);
+        }
+
+        var extObjMng = null;
+        var extObjId = null;
+        // 添加外部构件
+        var isRecPlaneAdded = false;
+        function addRecPlane() {
+            if (isRecPlaneAdded || !viewAdded) {
+                return;
+            }
+            // 构造外部构件管理器
+            if (!extObjMng) {
+                extObjMng = new Glodon.Bimface.Plugins.ExternalObject.ExternalObjectManager(viewer3D);
+            }
+            var recPlane = createPlane();
+            // 将平面对象添加为外部构件，并获取其ID
+            extObjMng.addObject("recPlane", recPlane);
+            extObjId = extObjMng.getObjectIdByName("recPlane");
+            // 将平面对象移动并旋转至指定位置
+            extObjMng.offset(extObjId, { x: -1150, y: -7950, z: 3450 });
+            extObjMng.rotateX(extObjId, Math.PI / 2);
+            // 设置canvas材质
+            setCanvasMaterial([extObjId]);
+            // 缩放至平面构件
+            var boundingBox = viewer3D.getBoundingBoxById(extObjId);
+            viewer3D.zoomToBoundingBox(boundingBox);
+            viewer3D.render();
+            isRecPlaneAdded = true;
+        }
+
+        // 构造矩形平面
+        function createPlane() {
+            // 定义矩形平面的点位
+            var pt1 = {
+                x: 0,
+                y: 0,
+                z: 0
+            };
+            var pt2 = {
+                x: 2500,
+                y: 800,
+                z: 0
+            };
+            // 设置平面的边框及填充色
+            var planeColor = new Glodon.Web.Graphics.Color('#32D3A6', 0.4);
+            var borderColor = new Glodon.Web.Graphics.Color('#FFFFFF', 1.0);
+            // 构造矩形平面，并赋予颜色材质
+            var rectanglePlane = new Glodon.Bimface.Plugins.Geometry.Plane(pt1, pt2);
+            rectanglePlane.setBorderColor(borderColor);
+            rectanglePlane.setColor(planeColor);
+            return rectanglePlane;
+        }
+
+        // 将指定构件设置canvas材质
+        function setCanvasMaterial(ids) {
+            var canvas = createCanvas();
+            // 构造材质配置 materialConfig
+            var materialConfig = new Glodon.Bimface.Plugins.Material.MaterialConfig();
+            materialConfig.viewer = viewer3D;
+            materialConfig.canvas = canvas;
+            // 构造材质对象 material
+            material = new Glodon.Bimface.Plugins.Material.Material(materialConfig);
+            // 将外部构件赋予canvas材质
+            material.overrideComponentsMaterialById(ids);
+        }
+
+        // 创建canvas对象
+        function createCanvas() {
+            var width = 2500;
+            var height = 800;
+            var canvas = document.createElement("canvas");
+            var ctx = canvas.getContext("2d");
+            canvas.width = width;
+            canvas.height = height;
+            ctx.fillStyle = "#32D3A6";
+            ctx.fillRect(0, 0, width, height);
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(35, 35, width - 70, height - 70);
+            ctx.fillStyle = '#32D3A6';
+            ctx.font = "200px Arial bolder";
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('开发BIM应用', canvas.width / 2, canvas.height / 2 - 160);
+            ctx.fillText('就用BIMFACE', canvas.width / 2, canvas.height / 2 + 160);
+            return canvas;
+        }
+
+    </script>
+</body>
+
+</html>

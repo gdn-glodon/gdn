@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- 本DEMO中将演示如何通过API冻结某个构件 -->
+
+<head>
+<meta charset="utf-8">
+<title>构件冻结DEMO</title>
+<style type="text/css">
+  * {
+    margin: 0;
+    padding: 0;
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  .buttons {
+    font-size: 0;
+  }
+
+  .button {
+    margin: 5px 0 5px 5px;
+    width: 120px;
+    height: 30px;
+    border-radius: 3px;
+    border: none;
+    background: #11DAB7;
+    color: #FFFFFF;
+    outline: none;
+  }
+
+  .main {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: 100%;
+  }
+
+  #domId {
+    flex: 1;
+  }
+</style>
+</head>
+
+<body>
+<!-- 定义DOM元素，用于在该DOM元素中显示模型或图纸 -->
+<div class='main'>
+  <div class='buttons'>
+    <button class="button" id="btnDeactivateComponentsById" onclick="deactivateComponentsById()">根据ID冻结构件</button>
+    <button class="button" id="btnDeactivateComponentsByData" onclick="deactivateComponentsByData()">根据条件冻结构件</button>
+  </div>
+  <!-- 定义DOM元素，用于在该DOM元素中显示模型或图纸 -->
+  <div id="domId"></div>
+</div>
+<!-- 引用BIMFACE的JavaScript显示组件库 -->
+<script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js"></script>
+<script>
+  var viewToken = '<yourViewToken>';
+  // 声明Viewer及App
+  var viewer3D;
+  var model;
+  var app;
+  var viewAdded = false;
+  // 配置JSSDK加载项
+  window.onload = function () {
+    var loaderConfig = new BimfaceSDKLoaderConfig();
+    loaderConfig.viewToken = viewToken;
+    BimfaceSDKLoader.load(loaderConfig, successCallback, failureCallback);
+  }
+  // 加载成功回调函数
+  var worldPosition = new Array();
+  function successCallback(viewMetaData) {
+    var dom4Show = document.getElementById('domId');
+    // 设置WebApplication3D的配置项
+    var webAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+    webAppConfig.domElement = dom4Show;
+    // 创建WebApplication3D，用以显示模型
+    app = new Glodon.Bimface.Application.WebApplication3D(webAppConfig);
+    app.addView(viewToken);
+    viewer3D = app.getViewer();
+    // 监听添加view完成的事件
+    viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function () {
+      //自适应屏幕大小
+      window.onresize = function () {
+        viewer3D.resize(document.documentElement.clientWidth, document.documentElement.clientHeight - 40);
+      }
+      viewAdded = true;
+      // 调用viewer3D对象的Method，可以继续扩展功能
+      // 渲染3D模型
+      viewer3D.render();
+      model = viewer3D.getModel();
+    });
+  };
+
+  // 加载失败回调函数
+  function failureCallback(error) {
+    console.log(error);
+  }
+
+  // ************************** 根据Id冻结构件 **************************
+  var isComponentsDeactivatedById = false;
+  function deactivateComponentsById() {
+    if (!viewAdded) {
+      return;
+    }
+    if (isComponentsDeactivatedById) {
+      //设置所有构件为激活状态
+      model.activateAllComponents();
+      model.clearOverrideColorComponents();
+      viewer3D.render();
+      setButtonText('btnDeactivateComponentsById', '根据Id冻结构件');
+    } else {
+      // 为被冻结的构件着色，以示区分
+      var newColor = new Glodon.Web.Graphics.Color(128, 128, 128, 0.5);
+      model.overrideComponentsColorById(['267327', '268067'], newColor);
+      // 冻结构件ID为'267327', '268067'的构件
+      model.deactivateComponentsById(['267327', '268067']);
+      viewer3D.render();
+      setButtonText('btnDeactivateComponentsById', '恢复构件');
+    }
+    isComponentsDeactivatedById = !isComponentsDeactivatedById;
+  }
+
+  // ************************** 根据条件冻结构件 **************************
+  var isComponentsDeactivatedByData = false;
+  function deactivateComponentsByData() {
+    if (!viewAdded) {
+      return;
+    }
+    if (isComponentsDeactivatedByData) {
+      //设置所有构件为激活状态
+      model.activateAllComponents();
+      model.clearOverrideColorComponents();
+      viewer3D.render();
+      setButtonText('btnDeactivateComponentsByData', '根据条件冻结构件');
+    } else {
+      // 为被冻结的构件着色，以示区分
+      var newColor = new Glodon.Web.Graphics.Color(128, 128, 128, 0.5);
+      model.overrideComponentsColorByObjectData([{
+      "levelName": "F2"
+    }, {
+      "levelName": "F1"
+    }, {
+      "levelName": "标高 5"
+    }],newColor);
+      // 冻结楼层名称为F2，F1和标高 5的所有构件
+      model.deactivateComponentsByObjectData([{
+      "levelName": "F2"
+    }, {
+      "levelName": "F1"
+    }, {
+      "levelName": "标高 5"
+    }]);
+      viewer3D.render();
+      setButtonText('btnDeactivateComponentsByData', '恢复构件');
+    }
+    isComponentsDeactivatedByData = !isComponentsDeactivatedByData;
+  }
+
+  // ************************** 按钮文字 **************************
+  function setButtonText(btnId, text) {
+    var dom = document.getElementById(btnId);
+    if (dom != null && dom.nodeName == "BUTTON") {
+      dom.innerText = text;
+    }
+  }
+</script>
+</body>
+
+</html>

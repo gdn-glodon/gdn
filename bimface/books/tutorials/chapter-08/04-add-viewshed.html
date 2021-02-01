@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>可视域分析</title>
+    <style media="screen">
+        * {
+            margin: 0;
+            padding: 0
+        }
+
+        html,
+        body {
+            height: 100%
+        }
+
+        .main {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100%;
+            width: 100%
+        }
+
+        .model {
+            flex: 1
+        }
+    </style>
+    <!-- 引用BIMFACE的JavaScript显示组件库 -->
+    <script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js"
+        charset="utf-8"></script>
+</head>
+
+<body>
+    <!-- 定义DOM元素，用于在该DOM元素中显示模型或图纸 -->
+    <div class='main'>
+        <!-- 定义DOM元素，用于在该DOM元素中显示模型或图纸 -->
+        <div class='model' id="domId"></div>
+    </div>
+    <script type="text/javascript">
+        var viewer3D;
+        var app;
+        var viewAdded = false;
+        var viewToken = '725ac8d85f7e46459f01970a46a2791c';
+        // 初始化显示组件
+        var options = new BimfaceSDKLoaderConfig();
+        options.viewToken = viewToken;
+        BimfaceSDKLoader.load(options, successCallback, failureCallback);
+        function successCallback(viewMetaData) {
+            if (viewMetaData.viewType == "3DView") {
+                // ======== 判断是否为3D模型 ========        
+                // 获取DOM元素
+                var dom4Show = document.getElementById('domId');
+                var webAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+                webAppConfig.domElement = dom4Show;
+                // 创建WebApplication
+                app = new Glodon.Bimface.Application.WebApplication3D(webAppConfig);
+                // 添加待显示的模型
+                app.addView(viewToken);
+                // 从WebApplication获取viewer3D对象
+                viewer3D = app.getViewer();
+                // 监听添加view完成的事件
+                viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function () {
+                    //自适应屏幕大小
+                    window.onresize = function () {
+                        viewer3D.resize(document.documentElement.clientWidth, document.documentElement.clientHeight - 40);
+                    }
+                    viewAdded = true;
+                    // 将相机缩放至指定视角，并添加可视域
+                    viewer3D.transparentComponentsById(['1763888097691488.235825838']);
+                    var cameraStatus = {
+                        "name": "persp",
+                        "position":
+                        {
+                            "x": 385100.8151754639,
+                            "y": -44422.177439099476,
+                            "z": 14244.440233429012
+                        },
+                        "target": {
+                            "x": -291893.606942596,
+                            "y": 776633.3356255337,
+                            "z": -227401.3371881951
+                        },
+                        "up": {
+                            "x": -0.14087435440085536,
+                            "y": 0.17084795901485308,
+                            "z": 0.9751745439523127
+                        },
+                        "fov": 45,
+                        "zoom": 1,
+                        "version": 1,
+                        "coordinateSystem": "world"
+                    }
+                    viewer3D.setCameraStatus(cameraStatus, addViewshed);
+                    loadMap();
+                    // 渲染3D模型
+                    viewer3D.render();
+                });
+            }
+        }
+        function failureCallback(error) {
+            console.log(error);
+        }
+
+        function loadMap() {
+            // 构造地图配置项
+            var mapConfig = new Glodon.Bimface.Plugins.TileMap.MapConfig();
+            mapConfig.viewer = viewer3D;
+            // 设置模型载入的基点
+            mapConfig.basePoint = {
+                "x": -85689.088,
+                "y": -62066.347
+            }
+            // 设置模型载入基点所对应的经纬度（WGS84）
+            mapConfig.modelPosition = [121.63255566511255, 29.837958723638756];
+            // 设置模型的旋转弧度值
+            mapConfig.modelRotationZ = 0 * Math.PI / 180;
+            // 设置模型零零标高对应的高程值，单位为米
+            mapConfig.modelAltitude = 3.0;
+            // 设置开启DEM
+            mapConfig.enableElevationModel = true;
+            // 设置地图类型为谷歌不带标签的卫星影像
+            mapConfig.mapLayer = 'Google_Satellite';
+            // 构造地图对象
+            map = new Glodon.Bimface.Plugins.TileMap.Map(mapConfig);
+        }
+
+        /**
+         * 模型场景内的可视域分析
+         * 可见区域默认为绿色，不可见区域默认为红色
+         * 距离单位为mm
+         */
+        function addViewshed() {
+            // 构造可视域分析管理器配置项
+            var viewshedManagerConfig = new Glodon.Bimface.Analysis.Viewshed.ViewshedManagerConfig();
+            // 设置可视域分析管理器的viewer对象
+            viewshedManagerConfig.viewer = viewer3D;
+            // 构造可视域分析管理器
+            var viewshedManager = new Glodon.Bimface.Analysis.Viewshed.ViewshedManager(viewshedManagerConfig);
+            // 构造可视域对象的配置项
+            var viewshedConfig = new Glodon.Bimface.Analysis.Viewshed.Viewshed3DConfig();
+            // 可视域的观察点位置
+            viewshedConfig.position = { x: 378009.9204790529, y: -8583.420964820874, z: 7546.564179268196 };
+            // 可视域的视线方向
+            viewshedConfig.direction = { x: -0.9, y: -0.10, z: 0.05 };
+            // 可视域可见、不可见区域的颜色
+            viewshedConfig.visibleAreaColor = new Glodon.Web.Graphics.Color(0, 255, 0, 0.6);
+            viewshedConfig.hiddenAreaColor = new Glodon.Web.Graphics.Color(255, 0, 0, 0.8);
+            // 可视域的视野范围
+            viewshedConfig.distance = 60000;
+            // 可视域的水平、垂直视角范围
+            viewshedConfig.horizontalFov = Math.PI / 4;
+            viewshedConfig.verticalFov = Math.PI / 8;
+            // 构造可视域对象
+            var viewshed = new Glodon.Bimface.Analysis.Viewshed.Viewshed3D(viewshedConfig);
+            // 添加到可视域分析管理器中
+            viewshedManager.addViewshed(viewshed);
+            // 可视域分析管理器的参数更新
+            viewshedManager.update();
+            viewer3D.render();
+        }
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="utf-8">
+<title>模型构件切分</title>
+<style type="text/css">
+  * {
+    margin: 0;
+    padding: 0;
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  .buttons {
+    font-size: 0;
+  }
+
+  .button {
+    margin: 5px 0 5px 5px;
+    width: 100px;
+    height: 30px;
+    border-radius: 3px;
+    border: none;
+    background: #11DAB7;
+    color: #FFFFFF;
+    outline: none;
+  }
+
+  .main {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: 100%;
+  }
+
+  #domId {
+    flex: 1;
+  }
+</style>
+</head>
+
+<body>
+<div class='main'>
+  <div class='buttons'>
+    <button class="button" id="btnSplitComponent" onclick="splitComponent()">构件切分</button>
+  </div>
+  <div id="domId"></div>
+</div>
+<script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js"></script>
+<script>
+  var viewToken = '<yourViewToken>';
+  // 声明Viewer及App
+  var viewer3D;
+  var model;
+  var app;
+  var viewAdded = false;
+
+  // 配置JSSDK加载项
+  window.onload = function () {
+    var loaderConfig = new BimfaceSDKLoaderConfig();
+    loaderConfig.viewToken = viewToken;
+    BimfaceSDKLoader.load(loaderConfig, successCallback, failureCallback);
+  }
+  // 加载成功回调函数
+  function successCallback(viewMetaData) {
+    var dom4Show = document.getElementById('domId');
+    // 设置WebApplication3D的配置项
+    var webAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+    webAppConfig.domElement = dom4Show;
+    webAppConfig.enableExplosion = true;
+    // 创建WebApplication3D，用以显示模型
+    app = new Glodon.Bimface.Application.WebApplication3D(webAppConfig);
+    app.addView(viewToken);
+    viewer3D = app.getViewer();
+
+    // 增加加载完成监听事件
+    viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function () {
+      viewAdded = true;
+      //自适应屏幕大小
+      window.onresize = function () {
+        viewer3D.resize(document.documentElement.clientWidth, document.documentElement.clientHeight - 40)
+      }
+      // 渲染场景
+      viewer3D.render();
+      model = viewer3D.getModel();
+    });
+  }
+  // 加载失败回调函数
+  function failureCallback(error) {
+    console.log(error);
+  }
+
+  // ************************** 构件切分 **************************
+  var isComponentSplit = false;
+  var splitComponentArr = null;
+
+  function splitComponent() {
+    if (!isComponentSplit) {
+      // 构造切分平面，由一个点及一个向量即可唯一确定
+      var splitPlane = {
+        point: {
+          x: -9471,
+          y: -1306,
+          z: 7000
+        },
+        normal: {
+          x: 0,
+          y: 0,
+          z: 1
+        }
+      }
+      // 切分指定构件
+      splitComponentArr = viewer3D.splitComponentByPlane('259504', splitPlane);
+      // 判断是否有切分成功
+      if (splitComponentArr) {
+        // 构造外部构件管理器
+        var extObjMng = new Glodon.Bimface.Viewer.ExternalObjectManager(viewer3D);
+        // 将切分构件以外的构件半透明显示
+        model.isolateComponentsById(['259504'], Glodon.Bimface.Viewer.IsolateOption.MakeOthersTranslucent);
+        // 遍历切分后的mesh对象，逐一加载进场景，并进行着色处理
+        for (var i = 0; i < splitComponentArr.length; i++) {
+          // 构造外部构件的名称，并以此载入进场景
+          var objectName = 'splitComponent_' + (i + 1).toString();
+          extObjMng.addObject(objectName, splitComponentArr[i]);
+          // 根据外部构件名称获取ID，并进行着色
+          var objId = extObjMng.getObjectIdByName(objectName);
+          viewer3D.overrideComponentsColorById([objId], setColor(i));
+        }
+        // 相机缩放至被切分的构件处
+        model.setSelectedComponentsById(['259504']);
+        model.zoomToSelectedComponents();
+        // 隐藏被切分前的构件
+        model.hideComponentsById(['259504']);
+        viewer3D.render();
+      }
+      isComponentSplit = true;
+    }
+  }
+
+  // 指定颜色
+  function setColor(number) {
+    var color = null;
+    switch (number) {
+      case 0:
+        color = new Glodon.Web.Graphics.Color('#DB5246');
+        break;
+      case 1:
+        color = new Glodon.Web.Graphics.Color('#FAC941');
+        break;
+    }
+    return color;
+  }
+
+</script>
+</body>
+
+</html>

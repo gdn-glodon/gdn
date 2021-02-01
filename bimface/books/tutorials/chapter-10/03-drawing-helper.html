@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>模型内嵌入图纸</title>
+  <style media="screen">
+    * {
+      margin: 0;
+      padding: 0
+    }
+
+    html,
+    body {
+      height: 100%
+    }
+
+    .main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      height: 100%;
+      width: 100%
+    }
+
+    .model {
+      flex: 1
+    }
+
+    .buttons {
+      font-size: 0;
+    }
+
+    .button {
+      margin: 5px 0 5px 5px;
+      width: 100px;
+      height: 30px;
+      border-radius: 3px;
+      border: none;
+      background: #11DAB7;
+      color: #FFFFFF;
+    }
+  </style>
+  <!-- 引用BIMFACE的JavaScript显示组件库 -->
+  <script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js"
+    charset="utf-8"></script>
+</head>
+
+<body>
+  <div class='main'>
+    <div class='buttons'>
+      <button class="button" id="btnShowPlaneSheet" onclick="addPlaneSheet()">显示楼层平面</button>
+    </div>
+    <!-- 定义DOM元素，用于在该DOM元素中显示模型或图纸 -->
+    <div class='model' id="domId"></div>
+  </div>
+  <script type="text/javascript">
+    var viewer3D;
+    var app;
+    var viewAdded = false;
+    var viewToken = '<your view token>';
+    // 初始化显示组件
+    var options = new BimfaceSDKLoaderConfig();
+    options.viewToken = viewToken;
+    BimfaceSDKLoader.load(options, successCallback, failureCallback);
+    function successCallback(viewMetaData) {
+      if (viewMetaData.viewType == "3DView") {
+        // ======== 判断是否为3D模型 ========        
+        // 获取DOM元素
+        var dom4Show = document.getElementById('domId');
+        var webAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+        webAppConfig.domElement = dom4Show;
+        // 创建WebApplication
+        app = new Glodon.Bimface.Application.WebApplication3D(webAppConfig);
+        // 添加待显示的模型
+        app.addView(viewToken);
+        // 从WebApplication获取viewer3D对象
+        viewer3D = app.getViewer();
+        // 监听添加view完成的事件
+        viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function () {
+          //自适应屏幕大小
+          window.onresize = function () {
+            viewer3D.resize(document.documentElement.clientWidth, document.documentElement.clientHeight - 40);
+          }
+          viewAdded = true;
+          // 初始化RevitHelper
+          initHelper();
+          // 渲染3D模型
+          viewer3D.render();
+        });
+      }
+    }
+    function failureCallback(error) {
+      console.log(error);
+    }
+    var helper = null;
+
+    var origin = null;
+    var direction = null;
+    var isPlaneSheetLoaded = false;
+    var isPlaneSheetActivated = false;
+    var planeSheetId = null;
+    // 嵌入平面图纸
+    function addPlaneSheet() {
+      var drawingId;
+      if (!helper) {
+        return;
+      }
+      if (!isPlaneSheetLoaded) {
+        // 获取视图列表，并将其中的部分视图嵌入模型场景中
+        var drawingIds = helper.getDrawingList();
+        planeSheetId = drawingIds[1].id;
+        origin = drawingIds[1].viewPort.origin;
+        direction = drawingIds[1].viewPort.viewDirection;
+        helper.addDrawingsById([planeSheetId], 1200, function (data) {
+          helper.setDrawingsOpacityById([planeSheetId], 0.5);
+          viewer3D.render();
+          isPlaneSheetLoaded = true;
+          setButtonText('btnShowPlaneSheet', '隐藏楼层平面');
+          adjustPlane(origin, direction, 1700);
+        });
+      } else if (!isPlaneSheetActivated) {
+        helper.showDrawingsById([planeSheetId]);
+        viewer3D.render();
+        setButtonText('btnShowPlaneSheet', '隐藏楼层平面');
+        adjustPlane(origin, direction, 1700);
+      } else {
+        helper.hideDrawingsById([planeSheetId]);
+        sectionPlane.exit();
+        sectionPlane = null;
+        viewer3D.render();
+        setButtonText('btnShowPlaneSheet', '显示楼层平面');
+      }
+      isPlaneSheetActivated = !isPlaneSheetActivated;
+    }
+
+    function initHelper() {
+      if (!viewAdded) {
+        return;
+      }
+      if (!helper) {
+        // 创建针对Revit中图纸相关功能的对象
+        var helperConfig = new Glodon.Bimface.Plugins.RevitHelpers.DrawingHelperConfig();
+        helperConfig.viewer = viewer3D;
+        helper = new Glodon.Bimface.Plugins.RevitHelpers.DrawingHelper(helperConfig);
+      }
+    }
+
+    var sectionPlane = null;
+    function initSectionPlane() {
+      if (!viewAdded) {
+        return;
+      }
+      if (!sectionPlane) {
+        var sectionPlaneConfig = new Glodon.Bimface.Plugins.Section.SectionPlaneConfig();
+        sectionPlaneConfig.viewer = viewer3D;
+        sectionPlane = new Glodon.Bimface.Plugins.Section.SectionPlane(sectionPlaneConfig);
+      }
+    }
+
+    function adjustPlane(pos, dir, offset) {
+      initSectionPlane();
+      sectionPlane.setPositionByPlane(pos, dir, offset);
+      sectionPlane.hidePlane();
+      viewer3D.render();
+    }
+
+    // ************************** 按钮文字 **************************
+    function setButtonText(btnId, text) {
+      var dom = document.getElementById(btnId);
+      if (dom != null && dom.nodeName == "BUTTON") {
+        dom.innerText = text;
+      }
+    }
+  </script>
+</body>
+
+</html>

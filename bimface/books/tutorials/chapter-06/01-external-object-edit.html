@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- 本DEMO中将演示外部构件的载入、平移、旋转与缩放 -->
+<!-- 您可以访问 https://bimface.com/objectlib 获取更多外部构件资源 -->
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>外部构件的平移、旋转与缩放</title>
+  <style type="text/css">
+    * {
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    .buttons {
+      font-size: 0;
+    }
+
+    .button {
+      margin: 5px 0 5px 5px;
+      width: 100px;
+      height: 30px;
+      border-radius: 3px;
+      border: none;
+      background: #32D3A6;
+      color: #FFFFFF;
+    }
+
+    .main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      height: 100%;
+    }
+
+    #domId {
+      flex: 1;
+    }
+  </style>
+  <script src="https://static.bimface.com/api/BimfaceSDKLoader/BimfaceSDKLoader@latest-release.js"></script>
+</head>
+
+<body>
+  <div class="main">
+    <div class="buttons">
+      <button class="button" id="btnAddObject" onclick="addExternalObject()">添加外部构件</button>
+      <button class="button" id="btnRotateObject" onclick="rotateObject()">旋转外部构件</button>
+      <button class="button" id="btnMoveObject" onclick="moveObject()">移动外部构件</button>
+      <button class="button" id="btnScaleObject" onclick="scaleObject()">放大外部构件</button>
+      <button class="button" id="btnEditObject" onclick="editObject()">外部构件编辑</button>
+    </div>
+    <!-- 定义DOM元素，用于在该DOM元素中显示模型或图纸 -->
+    <div id="domId"></div>
+  </div>
+  <script type="text/javascript">
+
+    var viewToken = "47a71646c2ba4a4abce6d08eeda1125c";
+    // 声明Viewer及App
+    var viewer3D;
+    var app;
+    var viewAdded = false;
+    var extObjMng = null;
+    var extObjId = null;
+
+    // 配置JSSDK加载项
+    window.onload = function () {
+      var loaderConfig = new BimfaceSDKLoaderConfig();
+      loaderConfig.viewToken = viewToken;
+      BimfaceSDKLoader.load(loaderConfig, successCallback, failureCallback);
+    }
+
+    // 加载成功回调函数
+    function successCallback(viewMetaData) {
+      var dom4Show = document.getElementById("domId");
+      // 设置WebApplication3D的配置项
+      var webAppConfig = new Glodon.Bimface.Application.WebApplication3DConfig();
+      webAppConfig.domElement = dom4Show;
+      // 创建WebApplication3D，用以显示模型
+      app = new Glodon.Bimface.Application.WebApplication3D(webAppConfig);
+      app.addView(viewToken);
+      viewer3D = app.getViewer();
+
+      // 增加加载完成监听事件
+      viewer3D.addEventListener(Glodon.Bimface.Viewer.Viewer3DEvent.ViewAdded, function () {
+        viewAdded = true;
+        //自适应屏幕大小
+        window.onresize = function () {
+          viewer3D.resize(document.documentElement.clientWidth, document.documentElement.clientHeight - 40)
+        }
+        // 渲染场景
+        viewer3D.render();
+      });
+    }
+
+    // 加载失败回调函数
+    function failureCallback(error) {
+      console.log(error);
+    }
+
+    // ************************** 加载外部构件 **************************
+    // 构件库地址： https://bimface.com/objectlib
+
+    var isExternalObjectAdded = false;
+    function addExternalObject() {
+      if (isExternalObjectAdded || !viewAdded) {
+        return;
+      }
+      if (!extObjMng) {
+        // 构造外部构件管理器
+        extObjMng = new Glodon.Bimface.Plugins.ExternalObject.ExternalObjectManager(viewer3D);
+      }
+      // 声明添加构件的Url
+      var url = "https://static.bimface.com/attach/6db9d5bcf88640f997b23be61e870ee8_%E6%B1%BD%E8%BD%A6.3DS";
+      // 根据Url添加外部构件
+      extObjMng.addObjectByUrl("vehicle", {"url": url}, function(){
+        extObjId = extObjMng.getObjectIdByName("vehicle");
+        isExternalObjectAdded = true;
+        // 将构件移至初始位置
+        extObjMng.translate(extObjId, {x: -7500, y: -15000, z: -450});
+        viewer3D.render();
+      });     
+    }
+
+    // ************************** 旋转外部构件 **************************
+    function rotateObject() {
+      if (!isExternalObjectAdded || !viewAdded) {
+        return;
+      }
+      // 绕逆时针旋转30°
+      extObjMng.rotateZ(extObjId, Math.PI / 6);
+    }
+
+    // 移动外部构件
+    function moveObject() {
+      if (!isExternalObjectAdded || !viewAdded) {
+        return;
+      }
+      // 沿汽车前进方向移动1.0米
+      extObjMng.offsetY(extObjId, -1000);
+    }
+
+    // ************************** 缩放外部构件 **************************
+    var isObjectScaled = false;
+    function scaleObject() {
+      if (!isExternalObjectAdded || !viewAdded) {
+        return;
+      }
+      if (!isObjectScaled) {
+        // 将汽车放大至当前的2倍
+        extObjMng.scale(extObjId, {x: 2.0, y: 2.0, z: 2.0});
+        setButtonText("btnScaleObject", "缩小外部构件");
+      } else {
+        // 将汽车缩小至当前的0.5倍
+        extObjMng.scale(extObjId, {x: 0.5, y: 0.5, z: 0.5});
+        setButtonText("btnScaleObject", "放大外部构件");
+      }
+      isObjectScaled = !isObjectScaled;
+    }
+
+    // ************************** 编辑外部构件 **************************
+    function editObject() {
+      if (!isExternalObjectAdded || !viewAdded) {
+        return;
+      }
+      // 设置外部构件编辑器工具条的配置项
+      var toolbarConfig = new Glodon.Bimface.Plugins.ExternalObject.ExternalObjectEditorToolbarConfig();
+      toolbarConfig.viewer = viewer3D;
+      toolbarConfig.id = extObjMng.getObjectIdByName("vehicle");
+      // 创建外部构件编辑器工具条
+      var editor = new Glodon.Bimface.Plugins.ExternalObject.ExternalObjectEditorToolbar(toolbarConfig);
+      // 显示编辑工具条
+      editor.show();
+    }
+
+    // 按钮文字
+    function setButtonText(btnId, text) {
+      var dom = document.getElementById(btnId);
+      if (dom != null && dom.nodeName == "BUTTON") {
+        dom.innerText = text;
+      }
+    }
+  </script>
+</body>
+
+</html>
